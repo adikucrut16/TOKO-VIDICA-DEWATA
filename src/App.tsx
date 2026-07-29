@@ -26,7 +26,7 @@ import { ModalStok } from './components/ModalStok';
 import { ModalKeuangan } from './components/ModalKeuangan';
 import { SettingsModal } from './components/SettingsModal';
 import { LoginScreen } from './components/LoginScreen';
-import { initAuthListener, googleSignIn, googleSignOut } from './lib/firebaseAuth';
+import { initAuthListener, googleSignIn, googleSignOut, setAccessToken as updateStoredToken } from './lib/firebaseAuth';
 import { 
   syncDatabaseDirectToSheets, 
   syncToWebApp, 
@@ -173,6 +173,10 @@ export default function App() {
       if (directRes.success) {
         successCount++;
         messages.push('Direct Sheets API berhasil');
+      } else if (directRes.message?.includes('kadaluarsa')) {
+        updateStoredToken(null);
+        setAccessToken(null);
+        messages.push('Sesi Google Kadaluarsa (Silakan Login Kembali)');
       }
     }
 
@@ -187,7 +191,7 @@ export default function App() {
       });
       showToast(`Rekap ke Google Sheets Berhasil! (${messages.join(', ')})`);
     } else {
-      showToast('Gagal merekap ke Google Sheets. Periksa koneksi atau otorisasi.');
+      showToast('Gagal merekap ke Google Sheets. Silakan login kembali dengan Google atau periksa koneksi.');
     }
   };
 
@@ -218,6 +222,9 @@ export default function App() {
               localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(updated));
               return updated;
             });
+          } else if (res.message?.includes('kadaluarsa')) {
+            updateStoredToken(null);
+            setAccessToken(null);
           }
         });
       }
