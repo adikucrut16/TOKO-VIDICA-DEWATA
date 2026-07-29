@@ -366,6 +366,17 @@ export default function App() {
     showToast(`Entri Kas (${data.tipe}) sebesar Rp ${data.nominal.toLocaleString('id-ID')} berhasil dicatat.`);
   };
 
+  const handleDeleteKeuangan = (id: string) => {
+    const target = db.keuangan.find((k) => k.id === id);
+    if (target) {
+      saveDatabase({
+        ...db,
+        keuangan: db.keuangan.filter((k) => k.id !== id)
+      });
+      showToast(`Transaksi kas "${target.keterangan}" berhasil dihapus.`);
+    }
+  };
+
   // --- CRUD: KATEGORI ---
   const handleDeleteCategory = (categoryName: string) => {
     const updatedCustom = (db.customKategori || []).filter(
@@ -586,6 +597,7 @@ export default function App() {
                 setKeuanganModalTipe(tipe);
                 setIsModalKeuanganOpen(true);
               }}
+              onDeleteKeuangan={handleDeleteKeuangan}
             />
           )}
 

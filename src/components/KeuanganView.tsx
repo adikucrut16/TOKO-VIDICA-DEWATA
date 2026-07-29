@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { AppDatabase } from '../types';
-import { Wallet, PlusCircle, MinusCircle, Search, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
+import { Wallet, PlusCircle, MinusCircle, Search, ArrowDownLeft, ArrowUpRight, Trash2 } from 'lucide-react';
 
 interface KeuanganViewProps {
   db: AppDatabase;
   onOpenModalKeuangan: (tipe: 'MASUK' | 'KELUAR') => void;
+  onDeleteKeuangan?: (id: string) => void;
 }
 
-export const KeuanganView: React.FC<KeuanganViewProps> = ({ db, onOpenModalKeuangan }) => {
+export const KeuanganView: React.FC<KeuanganViewProps> = ({ db, onOpenModalKeuangan, onDeleteKeuangan }) => {
   const [search, setSearch] = useState('');
   const [filterTipe, setFilterTipe] = useState<'ALL' | 'MASUK' | 'KELUAR'>('ALL');
 
@@ -129,12 +130,13 @@ export const KeuanganView: React.FC<KeuanganViewProps> = ({ db, onOpenModalKeuan
                 <th className="px-6 py-4">Keterangan / Rincian</th>
                 <th className="px-6 py-4 text-right text-emerald-700">Pemasukan (Debit)</th>
                 <th className="px-6 py-4 text-right text-rose-700">Pengeluaran (Kredit)</th>
+                <th className="px-6 py-4 text-center">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm">
               {filteredLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-10 text-center text-slate-400">
+                  <td colSpan={6} className="px-6 py-10 text-center text-slate-400">
                     Buku kas masih kosong atau tidak ada transaksi yang cocok.
                   </td>
                 </tr>
@@ -168,6 +170,21 @@ export const KeuanganView: React.FC<KeuanganViewProps> = ({ db, onOpenModalKeuan
                       </td>
                       <td className="px-6 py-4 text-right font-mono font-bold text-rose-600">
                         {!isMasuk ? formatRupiah(k.nominal) : '-'}
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        {onDeleteKeuangan && (
+                          <button
+                            onClick={() => {
+                              if (window.confirm(`Hapus transaksi kas "${k.keterangan}"?`)) {
+                                onDeleteKeuangan(k.id);
+                              }
+                            }}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                            title="Hapus Transaksi Kas"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );
