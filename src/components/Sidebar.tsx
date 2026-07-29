@@ -41,7 +41,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'stok', label: 'Mutasi Stok', icon: <ArrowLeftRight className="w-5 h-5" /> },
     { id: 'keuangan', label: 'Kas & Keuangan', icon: <Wallet className="w-5 h-5" /> },
     { id: 'customer', label: 'Daftar Customer', icon: <Users className="w-5 h-5" /> },
-    { id: 'pengiriman', label: 'Menu Pengiriman', icon: <Truck className="w-5 h-5" /> },
+    { id: 'pengiriman', label: 'Nota & Pengiriman', icon: <Truck className="w-5 h-5" /> },
     { id: 'laporan', label: 'Laporan & Export', icon: <FileText className="w-5 h-5" /> },
   ];
 
@@ -65,11 +65,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Brand Header */}
         <div className="p-6 border-b border-slate-800/80 flex items-center justify-between">
           <div>
-            <h1 className="font-display font-bold text-xl text-white tracking-wide flex items-center gap-2">
-              <Layers className="w-6 h-6 text-indigo-400" /> TOKO VIDICA
+            <h1 className="font-display font-bold text-lg text-white tracking-wide flex items-center gap-2">
+              <Layers className="w-6 h-6 text-indigo-400 shrink-0" /> TOKO VIDICA DEWATA
             </h1>
             <p className="text-[10px] text-indigo-400 font-mono tracking-widest mt-1 uppercase font-semibold">
-              Sistem Dewata
+              Sistem Manajemen Toko
             </p>
           </div>
           <button

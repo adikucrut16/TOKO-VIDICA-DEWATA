@@ -271,7 +271,7 @@ export const PengirimanView: React.FC<PengirimanViewProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
         <div>
           <h2 className="text-xl font-bold text-slate-800 font-display flex items-center gap-2">
-            <Truck className="w-6 h-6 text-indigo-600" /> Menu Pengiriman & Nota Barang
+            <Truck className="w-6 h-6 text-indigo-600" /> Nota & Pengiriman Barang
           </h2>
           <p className="text-xs text-slate-500 mt-1">
             Pencatatan daftar pengiriman barang ke customer lengkap dengan harga, rincian item, dan cetak nota resmi.
