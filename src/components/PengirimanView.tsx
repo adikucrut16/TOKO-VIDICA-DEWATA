@@ -448,16 +448,24 @@ export const PengirimanView: React.FC<PengirimanViewProps> = ({
 
       {/* Modal Input Pengiriman Baru */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-3xl w-full overflow-hidden animate-in fade-in zoom-in duration-200 max-h-[90vh] flex flex-col">
+        <div 
+          className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-50 flex items-center justify-center p-4"
+          onClick={() => setIsModalOpen(false)}
+        >
+          <div 
+            className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-3xl w-full overflow-hidden animate-in fade-in zoom-in duration-200 max-h-[90vh] flex flex-col relative z-10"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="p-5 bg-gradient-to-r from-slate-900 to-indigo-950 text-white flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2.5">
                 <Truck className="w-5 h-5 text-indigo-400" />
                 <h3 className="font-bold text-base font-display">Buat Surat Pengiriman Baru</h3>
               </div>
               <button
+                type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg cursor-pointer"
+                className="text-slate-400 hover:text-white p-1 rounded-lg cursor-pointer hover:bg-white/10 transition-colors"
+                title="Tutup"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -712,8 +720,14 @@ export const PengirimanView: React.FC<PengirimanViewProps> = ({
 
       {/* Modal Tampilan Nota & Cetak/Save PDF */}
       {activeNota && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-2xl w-full my-8 overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div 
+          className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto"
+          onClick={() => setActiveNota(null)}
+        >
+          <div 
+            className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-2xl w-full my-8 overflow-hidden animate-in fade-in zoom-in duration-200 relative z-10"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Header Controls (Hidden during print) */}
             <div className="p-4 bg-slate-900 text-white flex items-center justify-between no-print border-b border-slate-800">
               <div className="flex items-center gap-2">
@@ -723,6 +737,7 @@ export const PengirimanView: React.FC<PengirimanViewProps> = ({
 
               <div className="flex items-center gap-2">
                 <button
+                  type="button"
                   onClick={handlePrintNota}
                   className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
                 >
@@ -730,6 +745,7 @@ export const PengirimanView: React.FC<PengirimanViewProps> = ({
                 </button>
 
                 <button
+                  type="button"
                   onClick={handleDownloadPdf}
                   className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
                 >
@@ -737,8 +753,9 @@ export const PengirimanView: React.FC<PengirimanViewProps> = ({
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => setActiveNota(null)}
-                  className="p-1 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer ml-1"
+                  className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer ml-1"
                   title="Tutup Modal"
                 >
                   <X className="w-5 h-5" />
@@ -865,20 +882,23 @@ export const PengirimanView: React.FC<PengirimanViewProps> = ({
             {/* Bottom Actions (Hidden during print) */}
             <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between no-print">
               <button
+                type="button"
                 onClick={() => setActiveNota(null)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
+                className="px-5 py-2 rounded-xl text-xs font-bold text-slate-700 bg-slate-200 hover:bg-slate-300 transition-colors cursor-pointer shadow-2xs"
               >
                 Tutup
               </button>
 
               <div className="flex items-center gap-2.5">
                 <button
+                  type="button"
                   onClick={handlePrintNota}
                   className="px-4 py-2 rounded-xl text-xs font-bold text-slate-800 bg-white hover:bg-slate-100 border border-slate-300 flex items-center gap-2 cursor-pointer shadow-2xs transition-colors"
                 >
                   <Printer className="w-4 h-4 text-indigo-600" /> Cetak (Print)
                 </button>
                 <button
+                  type="button"
                   onClick={handleDownloadPdf}
                   className="btn-neon px-5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer"
                 >
