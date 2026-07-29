@@ -208,17 +208,53 @@ export const PengirimanView: React.FC<PengirimanViewProps> = ({
     window.print();
   };
 
-  const handleDownloadPdf = () => {
+  const handleDownloadPdf = async () => {
     const element = document.getElementById('printable-nota-modal');
-    if (!element) return;
-    const opt = {
-      margin:       8,
-      filename:     `Nota_Pengiriman_${activeNota?.noNota || activeNota?.id || 'Vidica'}.pdf`,
-      image:        { type: 'jpeg' as const, quality: 0.98 },
-      html2canvas:  { scale: 2, useCORS: true, logging: false },
-      jsPDF:        { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const }
-    };
-    html2pdf().set(opt).from(element).save();
+    if (!element) {
+      alert('Elemen nota tidak ditemukan.');
+      return;
+    }
+
+    try {
+      // Get html2pdf function safely across bundler setups
+      const html2pdfModule = typeof html2pdf === 'function' ? html2pdf : (html2pdf as any).default;
+      if (!html2pdfModule) {
+        throw new Error('Library html2pdf tidak tersedia');
+      }
+
+      // Clone element & prepare inline styles to prevent Tailwind v4 oklch() canvas crashes
+      const clone = element.cloneNode(true) as HTMLElement;
+      clone.style.width = '750px';
+      clone.style.padding = '24px';
+      clone.style.background = '#ffffff';
+      clone.style.color = '#0f172a';
+      
+      const container = document.createElement('div');
+      container.style.position = 'absolute';
+      container.style.left = '-9999px';
+      container.style.top = '-9999px';
+      container.appendChild(clone);
+      document.body.appendChild(container);
+
+      const filename = `Nota_Pengiriman_${activeNota?.noNota || activeNota?.id || 'Vidica'}.pdf`;
+      const opt = {
+        margin:       6,
+        filename:     filename,
+        image:        { type: 'jpeg' as const, quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true, logging: false },
+        jsPDF:        { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const }
+      };
+
+      await html2pdfModule().set(opt).from(clone).save();
+
+      // Cleanup
+      document.body.removeChild(container);
+    } catch (err) {
+      console.error('Download PDF error:', err);
+      // Fallback if browser security or canvas block occurs
+      alert('Sistem akan membuka menu Cetak Browser. Pilih "Simpan sebagai PDF" / "Save as PDF" pada tujuan printer Anda.');
+      window.print();
+    }
   };
 
   const filteredPengiriman = pengirimanList.filter(
