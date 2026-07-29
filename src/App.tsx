@@ -27,6 +27,7 @@ import { ModalKeuangan } from './components/ModalKeuangan';
 import { SettingsModal } from './components/SettingsModal';
 import { LoginScreen } from './components/LoginScreen';
 import { initAuthListener, googleSignIn, googleSignOut, setAccessToken as updateStoredToken } from './lib/firebaseAuth';
+import { fetchCloudDatabase, saveCloudDatabase, subscribeCloudDatabase } from './lib/firestoreSync';
 import { 
   syncDatabaseDirectToSheets, 
   syncToWebApp, 
@@ -110,6 +111,29 @@ export default function App() {
       }
     );
     return () => unsubscribe();
+  }, []);
+
+  // Cloud Database Sync (Real-time Firestore for computer & mobile cross-device sync)
+  useEffect(() => {
+    fetchCloudDatabase().then((cloudDb) => {
+      if (cloudDb && Array.isArray(cloudDb.produk)) {
+        setDb(cloudDb);
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(cloudDb));
+      }
+    });
+
+    const unsubscribe = subscribeCloudDatabase((cloudDb) => {
+      setDb(cloudDb);
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(cloudDb));
+      } catch (e) {
+        console.error('Failed to update local storage from cloud:', e);
+      }
+    });
+
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
   }, []);
 
   // Show Toast Message helper
@@ -200,8 +224,10 @@ export default function App() {
     setDb(newDb);
     try {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newDb));
+      saveCloudDatabase(newDb);
     } catch (e) {
-      console.error('Failed to save to local storage:', e);
+      console.error('Failed to save to local storage or cloud:', e);
+      saveCloudDatabase(newDb);
     }
 
     if (sheetsConfig.autoSync) {
@@ -228,6 +254,35 @@ export default function App() {
           }
         });
       }
+    }
+  };
+
+  const handleRefreshData = async () => {
+    showToast('Memuat ulang data terbaru...');
+    const cloudDb = await fetchCloudDatabase();
+    if (cloudDb && Array.isArray(cloudDb.produk)) {
+      setDb(cloudDb);
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(cloudDb));
+      } catch (e) {
+        // ignore
+      }
+      showToast('Data berhasil diperbarui dari Cloud / Server!');
+    } else {
+      try {
+        const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && Array.isArray(parsed.produk)) {
+            setDb(parsed);
+            showToast('Data dimuat ulang dari penyimpanan lokal.');
+            return;
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+      showToast('Gagal memuat ulang data atau perangkat offline.');
     }
   };
 
@@ -573,6 +628,7 @@ export default function App() {
                 setEditingProduk(null);
                 setIsModalProdukOpen(true);
               }}
+              onRefresh={handleRefreshData}
             />
           )}
 

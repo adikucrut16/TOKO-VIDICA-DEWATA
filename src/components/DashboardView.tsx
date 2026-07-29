@@ -9,7 +9,8 @@ import {
   ArrowDownLeft, 
   PlusCircle, 
   MinusCircle, 
-  ArrowRight
+  ArrowRight,
+  RefreshCw
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -30,6 +31,7 @@ interface DashboardViewProps {
   onOpenModalStok: (tipe: 'MASUK' | 'KELUAR') => void;
   onOpenModalKeuangan: (tipe: 'MASUK' | 'KELUAR') => void;
   onOpenModalProduk: () => void;
+  onRefresh?: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -37,7 +39,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigate,
   onOpenModalStok,
   onOpenModalKeuangan,
-  onOpenModalProduk
+  onOpenModalProduk,
+  onRefresh
 }) => {
   // 1. Calculate Metrics
   const totalProduk = db.produk.length;
@@ -149,6 +152,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           Aksi Cepat
         </span>
         <div className="flex flex-wrap items-center gap-2">
+          {onRefresh && (
+            <button
+              onClick={onRefresh}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300/80 transition-all shadow-2xs cursor-pointer"
+              title="Refresh / Muat Ulang Data Terbaru"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-slate-600" /> Refresh Data
+            </button>
+          )}
           <button
             onClick={onOpenModalProduk}
             className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-indigo-50 text-indigo-600 hover:bg-indigo-100/80 border border-indigo-200/70 transition-all shadow-2xs"
