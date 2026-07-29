@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+// @ts-ignore
+import html2pdf from 'html2pdf.js';
 import { Customer, Pengiriman, ItemPengiriman, Produk } from '../types';
 import { 
   Truck, 
@@ -17,7 +19,8 @@ import {
   Phone, 
   MapPin, 
   Receipt,
-  Download
+  Download,
+  FileDown
 } from 'lucide-react';
 
 interface PengirimanViewProps {
@@ -203,6 +206,19 @@ export const PengirimanView: React.FC<PengirimanViewProps> = ({
 
   const handlePrintNota = () => {
     window.print();
+  };
+
+  const handleDownloadPdf = () => {
+    const element = document.getElementById('printable-nota-modal');
+    if (!element) return;
+    const opt = {
+      margin:       8,
+      filename:     `Nota_Pengiriman_${activeNota?.noNota || activeNota?.id || 'Vidica'}.pdf`,
+      image:        { type: 'jpeg' as const, quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true, logging: false },
+      jsPDF:        { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const }
+    };
+    html2pdf().set(opt).from(element).save();
   };
 
   const filteredPengiriman = pengirimanList.filter(
@@ -666,7 +682,7 @@ export const PengirimanView: React.FC<PengirimanViewProps> = ({
             <div className="p-4 bg-slate-900 text-white flex items-center justify-between no-print border-b border-slate-800">
               <div className="flex items-center gap-2">
                 <Receipt className="w-5 h-5 text-indigo-400" />
-                <h3 className="font-bold text-sm font-display">Pratinjau & Cetak Nota Pengiriman</h3>
+                <h3 className="font-bold text-sm font-display">Pratinjau Nota Pengiriman</h3>
               </div>
 
               <div className="flex items-center gap-2">
@@ -674,12 +690,19 @@ export const PengirimanView: React.FC<PengirimanViewProps> = ({
                   onClick={handlePrintNota}
                   className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
                 >
-                  <Printer className="w-4 h-4" /> Print / Save PDF
+                  <Printer className="w-4 h-4" /> Cetak (Print)
+                </button>
+
+                <button
+                  onClick={handleDownloadPdf}
+                  className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                >
+                  <FileDown className="w-4 h-4" /> Simpan PDF
                 </button>
 
                 <button
                   onClick={() => setActiveNota(null)}
-                  className="p-1 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
+                  className="p-1 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer ml-1"
                   title="Tutup Modal"
                 >
                   <X className="w-5 h-5" />
@@ -804,19 +827,28 @@ export const PengirimanView: React.FC<PengirimanViewProps> = ({
             </div>
 
             {/* Bottom Actions (Hidden during print) */}
-            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3 no-print">
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between no-print">
               <button
                 onClick={() => setActiveNota(null)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
               >
                 Tutup
               </button>
-              <button
-                onClick={handlePrintNota}
-                className="btn-neon px-5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer"
-              >
-                <Printer className="w-4 h-4" /> Print / Save PDF
-              </button>
+
+              <div className="flex items-center gap-2.5">
+                <button
+                  onClick={handlePrintNota}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-800 bg-white hover:bg-slate-100 border border-slate-300 flex items-center gap-2 cursor-pointer shadow-2xs transition-colors"
+                >
+                  <Printer className="w-4 h-4 text-indigo-600" /> Cetak (Print)
+                </button>
+                <button
+                  onClick={handleDownloadPdf}
+                  className="btn-neon px-5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer"
+                >
+                  <FileDown className="w-4 h-4" /> Simpan File PDF
+                </button>
+              </div>
             </div>
           </div>
         </div>
