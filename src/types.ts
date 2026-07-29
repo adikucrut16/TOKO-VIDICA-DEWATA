@@ -28,6 +28,8 @@ export interface TransaksiKeuangan {
   nominal: number;
   keterangan: string;
   kategori?: string;
+  metodePembayaran?: 'CASH' | 'TRANSFER';
+  namaBank?: string;
 }
 
 export interface Customer {

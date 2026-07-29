@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AppDatabase } from '../types';
-import { Wallet, PlusCircle, MinusCircle, Search, ArrowDownLeft, ArrowUpRight, Trash2 } from 'lucide-react';
+import { Wallet, PlusCircle, MinusCircle, Search, ArrowDownLeft, ArrowUpRight, Trash2, Banknote, CreditCard } from 'lucide-react';
 
 interface KeuanganViewProps {
   db: AppDatabase;
@@ -11,6 +11,7 @@ interface KeuanganViewProps {
 export const KeuanganView: React.FC<KeuanganViewProps> = ({ db, onOpenModalKeuangan, onDeleteKeuangan }) => {
   const [search, setSearch] = useState('');
   const [filterTipe, setFilterTipe] = useState<'ALL' | 'MASUK' | 'KELUAR'>('ALL');
+  const [filterMetode, setFilterMetode] = useState<'ALL' | 'CASH' | 'TRANSFER'>('ALL');
 
   const totalSaldo = db.keuangan.reduce(
     (acc, curr) => (curr.tipe === 'MASUK' ? acc + curr.nominal : acc - curr.nominal),
@@ -19,9 +20,13 @@ export const KeuanganView: React.FC<KeuanganViewProps> = ({ db, onOpenModalKeuan
 
   const filteredLogs = db.keuangan
     .filter((k) => {
-      const matchSearch = k.keterangan.toLowerCase().includes(search.toLowerCase());
+      const matchSearch = k.keterangan.toLowerCase().includes(search.toLowerCase()) ||
+                          (k.namaBank && k.namaBank.toLowerCase().includes(search.toLowerCase()));
       const matchTipe = filterTipe === 'ALL' || k.tipe === filterTipe;
-      return matchSearch && matchTipe;
+      const matchMetode = filterMetode === 'ALL' || 
+                          (filterMetode === 'CASH' && (k.metodePembayaran === 'CASH' || !k.metodePembayaran)) ||
+                          (filterMetode === 'TRANSFER' && k.metodePembayaran === 'TRANSFER');
+      return matchSearch && matchTipe && matchMetode;
     })
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
@@ -81,27 +86,45 @@ export const KeuanganView: React.FC<KeuanganViewProps> = ({ db, onOpenModalKeuan
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Cari transaksi berdasarkan rincian keterangan..."
+            placeholder="Cari transaksi berdasarkan rincian keterangan / nama bank..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="input-futuristic pl-10 text-sm"
           />
         </div>
 
-        <div className="w-full sm:w-48">
+        <div className="w-full sm:w-44">
           <select
             value={filterTipe}
             onChange={(e) => setFilterTipe(e.target.value as any)}
             className="input-futuristic text-sm cursor-pointer"
           >
             <option value="ALL" className="bg-white text-slate-800">
-              Semua Transaksi ({db.keuangan.length})
+              Semua Tipe ({db.keuangan.length})
             </option>
             <option value="MASUK" className="bg-white text-slate-800">
               Pemasukan (Debit)
             </option>
             <option value="KELUAR" className="bg-white text-slate-800">
               Pengeluaran (Kredit)
+            </option>
+          </select>
+        </div>
+
+        <div className="w-full sm:w-44">
+          <select
+            value={filterMetode}
+            onChange={(e) => setFilterMetode(e.target.value as any)}
+            className="input-futuristic text-sm cursor-pointer"
+          >
+            <option value="ALL" className="bg-white text-slate-800">
+              Semua Metode
+            </option>
+            <option value="CASH" className="bg-white text-slate-800">
+              💵 Cash (Tunai)
+            </option>
+            <option value="TRANSFER" className="bg-white text-slate-800">
+              💳 Transfer Bank
             </option>
           </select>
         </div>
@@ -126,7 +149,8 @@ export const KeuanganView: React.FC<KeuanganViewProps> = ({ db, onOpenModalKeuan
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50 text-slate-500 text-xs font-bold uppercase tracking-wider">
                 <th className="px-6 py-4">Waktu</th>
-                <th className="px-6 py-4">Tipe Transaksi</th>
+                <th className="px-6 py-4">Tipe</th>
+                <th className="px-6 py-4">Metode Bayar</th>
                 <th className="px-6 py-4">Keterangan / Rincian</th>
                 <th className="px-6 py-4 text-right text-emerald-700">Pemasukan (Debit)</th>
                 <th className="px-6 py-4 text-right text-rose-700">Pengeluaran (Kredit)</th>
@@ -136,13 +160,15 @@ export const KeuanganView: React.FC<KeuanganViewProps> = ({ db, onOpenModalKeuan
             <tbody className="divide-y divide-slate-100 text-sm">
               {filteredLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-10 text-center text-slate-400">
+                  <td colSpan={7} className="px-6 py-10 text-center text-slate-400">
                     Buku kas masih kosong atau tidak ada transaksi yang cocok.
                   </td>
                 </tr>
               ) : (
                 filteredLogs.map((k) => {
                   const isMasuk = k.tipe === 'MASUK';
+                  const isTransfer = k.metodePembayaran === 'TRANSFER';
+
                   return (
                     <tr key={k.id} className="hover:bg-slate-50/80 transition-colors">
                       <td className="px-6 py-4 text-slate-500 text-xs font-medium">{formatDate(k.date)}</td>
@@ -161,6 +187,19 @@ export const KeuanganView: React.FC<KeuanganViewProps> = ({ db, onOpenModalKeuan
                           )}
                           {k.tipe}
                         </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        {isTransfer ? (
+                          <span className="px-2.5 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full text-[11px] font-bold inline-flex items-center gap-1">
+                            <CreditCard className="w-3 h-3 text-indigo-600" />
+                            Transfer ({k.namaBank || 'BANK'})
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-1 bg-slate-100 text-slate-700 border border-slate-200 rounded-full text-[11px] font-semibold inline-flex items-center gap-1">
+                            <Banknote className="w-3 h-3 text-emerald-600" />
+                            Cash
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-slate-800 text-sm font-medium whitespace-normal break-words max-w-sm">
                         {k.keterangan}

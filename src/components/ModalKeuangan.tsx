@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TipeMutasi } from '../types';
-import { X, Wallet, PlusCircle, MinusCircle, CheckCircle2 } from 'lucide-react';
+import { X, Wallet, PlusCircle, MinusCircle, CheckCircle2, Banknote, CreditCard } from 'lucide-react';
 
 interface ModalKeuanganProps {
   isOpen: boolean;
@@ -10,9 +10,13 @@ interface ModalKeuanganProps {
     nominal: number;
     keterangan: string;
     kategori?: string;
+    metodePembayaran?: 'CASH' | 'TRANSFER';
+    namaBank?: string;
   }) => void;
   tipe: TipeMutasi;
 }
+
+const BANK_OPTIONS = ['BCA', 'MANDIRI', 'BNI', 'BRI', 'MANTAP', 'BPD', 'BSI', 'BANK_LAIN'];
 
 export const ModalKeuangan: React.FC<ModalKeuanganProps> = ({
   isOpen,
@@ -23,11 +27,17 @@ export const ModalKeuangan: React.FC<ModalKeuanganProps> = ({
   const [nominal, setNominal] = useState<number | ''>('');
   const [keterangan, setKeterangan] = useState('');
   const [kategori, setKategori] = useState('Penjualan');
+  const [metodePembayaran, setMetodePembayaran] = useState<'CASH' | 'TRANSFER'>('CASH');
+  const [selectedBank, setSelectedBank] = useState('BCA');
+  const [customBank, setCustomBank] = useState('');
 
   useEffect(() => {
     setNominal('');
     setKeterangan('');
     setKategori(tipe === 'MASUK' ? 'Penjualan' : 'Operasional');
+    setMetodePembayaran('CASH');
+    setSelectedBank('BCA');
+    setCustomBank('');
   }, [isOpen, tipe]);
 
   if (!isOpen) return null;
@@ -39,11 +49,22 @@ export const ModalKeuangan: React.FC<ModalKeuanganProps> = ({
     const numNominal = Number(nominal);
     if (!numNominal || numNominal <= 0 || !keterangan.trim()) return;
 
+    let finalNamaBank: string | undefined = undefined;
+    if (metodePembayaran === 'TRANSFER') {
+      if (selectedBank === 'BANK_LAIN') {
+        finalNamaBank = customBank.trim() ? customBank.trim().toUpperCase() : 'BANK LAIN';
+      } else {
+        finalNamaBank = selectedBank;
+      }
+    }
+
     onSave({
       tipe,
       nominal: numNominal,
       keterangan: keterangan.trim(),
-      kategori
+      kategori,
+      metodePembayaran,
+      namaBank: finalNamaBank
     });
     onClose();
   };
@@ -87,6 +108,79 @@ export const ModalKeuangan: React.FC<ModalKeuanganProps> = ({
               }`}
             />
           </div>
+
+          {/* Metode Pembayaran: CASH / TRANSFER */}
+          <div>
+            <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">
+              Metode Pembayaran *
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setMetodePembayaran('CASH')}
+                className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                  metodePembayaran === 'CASH'
+                    ? 'bg-emerald-500 text-white border-emerald-600 shadow-xs'
+                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                <Banknote className="w-4 h-4" /> CASH (Tunai)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setMetodePembayaran('TRANSFER')}
+                className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                  metodePembayaran === 'TRANSFER'
+                    ? 'bg-indigo-600 text-white border-indigo-700 shadow-xs'
+                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                <CreditCard className="w-4 h-4" /> TRANSFER BANK
+              </button>
+            </div>
+          </div>
+
+          {/* Pilihan Bank jika TRANSFER */}
+          {metodePembayaran === 'TRANSFER' && (
+            <div className="p-3.5 bg-indigo-50/60 rounded-xl border border-indigo-100 space-y-3 animate-in fade-in duration-150">
+              <div>
+                <label className="block text-xs font-bold text-indigo-900 mb-1 uppercase tracking-wider">
+                  Pilih Bank Tujuan / Asal *
+                </label>
+                <select
+                  value={selectedBank}
+                  onChange={(e) => setSelectedBank(e.target.value)}
+                  className="input-futuristic text-sm cursor-pointer font-bold text-indigo-950 bg-white"
+                >
+                  <option value="BCA">BCA (Bank Central Asia)</option>
+                  <option value="MANDIRI">MANDIRI (Bank Mandiri)</option>
+                  <option value="BNI">BNI (Bank Negara Indonesia)</option>
+                  <option value="BRI">BRI (Bank Rakyat Indonesia)</option>
+                  <option value="MANTAP">MANTAP (Bank Mandiri Taspen)</option>
+                  <option value="BPD">BPD (Bank Pembangunan Daerah / BPD Bali)</option>
+                  <option value="BSI">BSI (Bank Syariah Indonesia)</option>
+                  <option value="BANK_LAIN">+ TAMBAHKAN BANK LAIN...</option>
+                </select>
+              </div>
+
+              {selectedBank === 'BANK_LAIN' && (
+                <div>
+                  <label className="block text-[11px] font-bold text-indigo-800 mb-1 uppercase">
+                    Nama Bank Lainnya *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={customBank}
+                    onChange={(e) => setCustomBank(e.target.value)}
+                    placeholder="Cth: BANK PERMATA / DANAMON / JAGO"
+                    className="input-futuristic text-sm bg-white font-semibold text-slate-800"
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">

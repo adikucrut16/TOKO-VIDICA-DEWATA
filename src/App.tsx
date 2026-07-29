@@ -7,7 +7,8 @@ import {
   TipeMutasi, 
   GoogleSheetsConfig,
   Customer,
-  Pengiriman 
+  Pengiriman,
+  TransaksiKeuangan 
 } from './types';
 import { INITIAL_DATABASE } from './data/initialData';
 import { Sidebar } from './components/Sidebar';
@@ -348,14 +349,18 @@ export default function App() {
     nominal: number;
     keterangan: string;
     kategori?: string;
+    metodePembayaran?: 'CASH' | 'TRANSFER';
+    namaBank?: string;
   }) => {
-    const newTrans = {
+    const newTrans: TransaksiKeuangan = {
       id: `KEU-${Date.now()}`,
       date: new Date().toISOString(),
       tipe: data.tipe,
       nominal: data.nominal,
       keterangan: data.keterangan,
-      kategori: data.kategori || (data.tipe === 'MASUK' ? 'Penjualan' : 'Operasional')
+      kategori: data.kategori || (data.tipe === 'MASUK' ? 'Penjualan' : 'Operasional'),
+      metodePembayaran: data.metodePembayaran || 'CASH',
+      namaBank: data.namaBank
     };
 
     saveDatabase({
@@ -363,7 +368,8 @@ export default function App() {
       keuangan: [newTrans, ...db.keuangan]
     });
 
-    showToast(`Entri Kas (${data.tipe}) sebesar Rp ${data.nominal.toLocaleString('id-ID')} berhasil dicatat.`);
+    const methodDesc = data.metodePembayaran === 'TRANSFER' ? ` (Transfer ${data.namaBank || ''})` : ' (Cash)';
+    showToast(`Entri Kas (${data.tipe})${methodDesc} sebesar Rp ${data.nominal.toLocaleString('id-ID')} berhasil dicatat.`);
   };
 
   const handleDeleteKeuangan = (id: string) => {

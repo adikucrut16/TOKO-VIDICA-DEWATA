@@ -205,7 +205,7 @@ export const INITIAL_DATABASE: AppDatabase = {
   pengiriman: [
     {
       id: 'KRM-001',
-      noNota: 'NOTA-2026-001',
+      noNota: 'NOTA-0001',
       tanggal: new Date().toISOString().split('T')[0],
       idCustomer: 'CUST-001',
       namaCustomer: 'Toko Berkah Utama',

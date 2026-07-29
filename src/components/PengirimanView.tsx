@@ -178,7 +178,18 @@ export const PengirimanView: React.FC<PengirimanViewProps> = ({
       return;
     }
 
-    const generatedNoNota = `NOTA-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    let nextNum = pengirimanList.length + 1;
+    pengirimanList.forEach((p) => {
+      if (p.noNota) {
+        const match = p.noNota.match(/(\d+)$/);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (num >= nextNum) nextNum = num + 1;
+        }
+      }
+    });
+    const seqFormatted = String(nextNum).padStart(4, '0');
+    const generatedNoNota = `NOTA-${seqFormatted}`;
     const computedTotal = calculateFormTotal();
 
     const createdPengiriman = onSavePengiriman(
@@ -732,7 +743,7 @@ export const PengirimanView: React.FC<PengirimanViewProps> = ({
             <div className="p-4 bg-slate-900 text-white flex items-center justify-between no-print border-b border-slate-800">
               <div className="flex items-center gap-2">
                 <Receipt className="w-5 h-5 text-indigo-400" />
-                <h3 className="font-bold text-sm font-display">Pratinjau Nota Pengiriman</h3>
+                <h3 className="font-bold text-sm font-display">Pratinjau Nota Penjualan</h3>
               </div>
 
               <div className="flex items-center gap-2">
@@ -776,7 +787,7 @@ export const PengirimanView: React.FC<PengirimanViewProps> = ({
                 </div>
                 <div className="text-right">
                   <div className="inline-block bg-slate-900 text-white text-xs font-bold uppercase tracking-widest px-3 py-1 rounded">
-                    NOTA PENGIRIMAN
+                    NOTA PENJUALAN
                   </div>
                   <p className="text-xs font-mono font-bold text-slate-800 mt-2">
                     No: <span className="text-indigo-900">{activeNota.noNota || activeNota.id}</span>
@@ -801,9 +812,6 @@ export const PengirimanView: React.FC<PengirimanViewProps> = ({
                     ALAMAT PENGIRIMAN
                   </p>
                   <p className="text-slate-800 leading-relaxed">{activeNota.alamat || '-'}</p>
-                  <p className="mt-2 text-[10px] font-bold text-slate-500 uppercase">
-                    Status: <span className="text-indigo-800">{activeNota.status || 'PROSES'}</span>
-                  </p>
                 </div>
               </div>
 
@@ -870,7 +878,7 @@ export const PengirimanView: React.FC<PengirimanViewProps> = ({
                     </p>
                   </div>
                   <div>
-                    <p className="text-slate-500 text-[10px] uppercase font-bold mb-12">Hormat Kami / Admin</p>
+                    <p className="text-slate-500 text-[10px] uppercase font-bold mb-12">Hormat Kami</p>
                     <p className="border-t border-slate-400 pt-1 font-semibold text-slate-800">
                       ( Toko Vidica Dewata )
                     </p>
