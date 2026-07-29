@@ -1,33 +1,58 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Produk } from '../types';
-import { X, Save, Package } from 'lucide-react';
+import { X, Save, Package, Plus, List } from 'lucide-react';
 
 interface ModalProdukProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (p: Omit<Produk, 'id'> & { id?: string }) => void;
   initialData?: Produk | null;
+  existingCategories?: string[];
 }
+
+const DEFAULT_CATEGORIES = ['Makanan', 'Minuman', 'Rokok', 'Sembako', 'Elektronik', 'Lainnya'];
 
 export const ModalProduk: React.FC<ModalProdukProps> = ({
   isOpen,
   onClose,
   onSave,
-  initialData
+  initialData,
+  existingCategories = []
 }) => {
   const [sku, setSku] = useState('');
   const [nama, setNama] = useState('');
-  const [kategori, setKategori] = useState('Makanan');
+  const [kategoriSelect, setKategoriSelect] = useState('Makanan');
+  const [customKategori, setCustomKategori] = useState('');
+  const [isCustomMode, setIsCustomMode] = useState(false);
   const [harga, setHarga] = useState<number | ''>('');
   const [satuan, setSatuan] = useState('Pcs');
   const [isiKarton, setIsiKarton] = useState('1');
   const [minStok, setMinStok] = useState<number | ''>(5);
 
+  // Combine default categories and existing categories from db
+  const allCategories = useMemo(() => {
+    const combined = new Set([...DEFAULT_CATEGORIES, ...existingCategories.filter(Boolean)]);
+    if (initialData?.kategori) {
+      combined.add(initialData.kategori);
+    }
+    return Array.from(combined);
+  }, [existingCategories, initialData]);
+
   useEffect(() => {
     if (initialData) {
       setSku(initialData.sku);
       setNama(initialData.nama);
-      setKategori(initialData.kategori);
+      
+      if (allCategories.includes(initialData.kategori)) {
+        setKategoriSelect(initialData.kategori);
+        setIsCustomMode(false);
+        setCustomKategori('');
+      } else {
+        setIsCustomMode(true);
+        setCustomKategori(initialData.kategori);
+        setKategoriSelect('Makanan');
+      }
+
       setHarga(initialData.harga);
       setSatuan(initialData.satuan);
       setIsiKarton(String(initialData.isiKarton));
@@ -35,13 +60,15 @@ export const ModalProduk: React.FC<ModalProdukProps> = ({
     } else {
       setSku(`BRG-${Math.floor(100 + Math.random() * 900)}`);
       setNama('');
-      setKategori('Makanan');
+      setKategoriSelect('Makanan');
+      setCustomKategori('');
+      setIsCustomMode(false);
       setHarga('');
       setSatuan('Pcs');
       setIsiKarton('1');
       setMinStok(5);
     }
-  }, [initialData, isOpen]);
+  }, [initialData, isOpen, allCategories]);
 
   if (!isOpen) return null;
 
@@ -49,11 +76,22 @@ export const ModalProduk: React.FC<ModalProdukProps> = ({
     e.preventDefault();
     if (!nama.trim() || !sku.trim()) return;
 
+    let finalKategori = 'Makanan';
+    if (isCustomMode) {
+      finalKategori = customKategori.trim() || 'Lainnya';
+    } else {
+      if (kategoriSelect === '__CUSTOM__') {
+        finalKategori = customKategori.trim() || 'Lainnya';
+      } else {
+        finalKategori = kategoriSelect;
+      }
+    }
+
     onSave({
       id: initialData?.id,
       sku: sku.toUpperCase().trim(),
       nama: nama.trim(),
-      kategori,
+      kategori: finalKategori,
       harga: Number(harga) || 0,
       satuan,
       isiKarton: isiKarton.trim() || '1',
@@ -113,21 +151,64 @@ export const ModalProduk: React.FC<ModalProdukProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">
-                Kategori
-              </label>
-              <select
-                value={kategori}
-                onChange={(e) => setKategori(e.target.value)}
-                className="input-futuristic text-sm cursor-pointer"
-              >
-                <option value="Makanan" className="bg-white text-slate-800">Makanan</option>
-                <option value="Minuman" className="bg-white text-slate-800">Minuman</option>
-                <option value="Rokok" className="bg-white text-slate-800">Rokok</option>
-                <option value="Sembako" className="bg-white text-slate-800">Sembako</option>
-                <option value="Elektronik" className="bg-white text-slate-800">Elektronik</option>
-                <option value="Lainnya" className="bg-white text-slate-800">Lainnya</option>
-              </select>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  Kategori
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCustomMode(!isCustomMode);
+                    if (!isCustomMode && !customKategori) {
+                      setCustomKategori('');
+                    }
+                  }}
+                  className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer transition-colors"
+                >
+                  {isCustomMode ? (
+                    <>
+                      <List className="w-3 h-3" /> Pilih Dari List
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-3 h-3" /> + Custom Baru
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {isCustomMode ? (
+                <input
+                  type="text"
+                  required
+                  value={customKategori}
+                  onChange={(e) => setCustomKategori(e.target.value)}
+                  placeholder="Ketik Kategori Baru..."
+                  className="input-futuristic text-sm focus:border-indigo-500"
+                  autoFocus
+                />
+              ) : (
+                <select
+                  value={kategoriSelect}
+                  onChange={(e) => {
+                    if (e.target.value === '__CUSTOM__') {
+                      setIsCustomMode(true);
+                    } else {
+                      setKategoriSelect(e.target.value);
+                    }
+                  }}
+                  className="input-futuristic text-sm cursor-pointer"
+                >
+                  {allCategories.map((cat) => (
+                    <option key={cat} value={cat} className="bg-white text-slate-800">
+                      {cat}
+                    </option>
+                  ))}
+                  <option value="__CUSTOM__" className="bg-white text-indigo-600 font-semibold">
+                    + Kategori Custom Baru...
+                  </option>
+                </select>
+              )}
             </div>
 
             <div>

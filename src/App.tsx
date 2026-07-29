@@ -496,6 +496,7 @@ export default function App() {
         onClose={() => setIsModalProdukOpen(false)}
         onSave={handleSaveProduk}
         initialData={editingProduk}
+        existingCategories={db.produk.map((p) => p.kategori)}
       />
 
       <ModalStok
