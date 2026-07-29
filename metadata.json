@@ -1,0 +1,6 @@
+{
+  "name": "Toko Vidica Dewata",
+  "description": "Smart Dashboard Manajemen Toko, Katalog Produk, Mutasi Stok, dan Buku Kas Keuangan Dewata",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

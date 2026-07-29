@@ -1,0 +1,441 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  AppDatabase, 
+  ViewTab, 
+  Produk, 
+  TipeMutasi, 
+  GoogleSheetsConfig 
+} from './types';
+import { INITIAL_DATABASE } from './data/initialData';
+import { Sidebar } from './components/Sidebar';
+import { Header } from './components/Header';
+import { DashboardView } from './components/DashboardView';
+import { ProdukView } from './components/ProdukView';
+import { StokView } from './components/StokView';
+import { KeuanganView } from './components/KeuanganView';
+import { LaporanView } from './components/LaporanView';
+import { ModalProduk } from './components/ModalProduk';
+import { ModalStok } from './components/ModalStok';
+import { ModalKeuangan } from './components/ModalKeuangan';
+import { SettingsModal } from './components/SettingsModal';
+
+const LOCAL_STORAGE_KEY = 'vidicaDataFuturistic';
+const CONFIG_STORAGE_KEY = 'vidicaSheetsConfig';
+
+export default function App() {
+  // Database State
+  const [db, setDb] = useState<AppDatabase>(() => {
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && Array.isArray(parsed.produk)) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to parse local database:', e);
+    }
+    return INITIAL_DATABASE;
+  });
+
+  // Google Sheets Config State
+  const [sheetsConfig, setSheetsConfig] = useState<GoogleSheetsConfig>(() => {
+    const defaultUrl = 'https://docs.google.com/spreadsheets/d/1nCS_IWOeTlxxaUHKG3n6GnfHQrv7hXrzO6ErK72qMBY/edit';
+    try {
+      const saved = localStorage.getItem(CONFIG_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          ...parsed,
+          spreadsheetUrl: parsed.spreadsheetUrl || defaultUrl
+        };
+      }
+    } catch (e) {
+      console.error('Failed to parse sheets config:', e);
+    }
+    return { webAppUrl: '', spreadsheetUrl: defaultUrl, autoSync: true };
+  });
+
+  // UI Navigation State
+  const [activeTab, setActiveTab] = useState<ViewTab>('dashboard');
+  const [isOpenMobileSidebar, setIsOpenMobileSidebar] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Modal Control States
+  const [isModalProdukOpen, setIsModalProdukOpen] = useState(false);
+  const [editingProduk, setEditingProduk] = useState<Produk | null>(null);
+
+  const [isModalStokOpen, setIsModalStokOpen] = useState(false);
+  const [stokModalTipe, setStokModalTipe] = useState<TipeMutasi>('MASUK');
+  const [stokPreselectedProd, setStokPreselectedProd] = useState<Produk | null>(null);
+
+  const [isModalKeuanganOpen, setIsModalKeuanganOpen] = useState(false);
+  const [keuanganModalTipe, setKeuanganModalTipe] = useState<TipeMutasi>('MASUK');
+
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // Show Toast Message helper
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage((prev) => (prev === msg ? null : prev));
+    }, 3000);
+  };
+
+  // Save to LocalStorage & Optional Google Sheets Sync
+  const saveDatabase = (newDb: AppDatabase) => {
+    setDb(newDb);
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newDb));
+    } catch (e) {
+      console.error('Failed to save to local storage:', e);
+    }
+
+    if (sheetsConfig.webAppUrl && sheetsConfig.autoSync) {
+      syncToSheets(newDb);
+    }
+  };
+
+  // Sync Data to Google Sheets Web App Endpoint
+  const syncToSheets = async (targetDb = db) => {
+    if (!sheetsConfig.webAppUrl) {
+      showToast('URL Google Sheets belum diatur. Buka Pengaturan untuk memasukkan URL Web App.');
+      setIsSettingsOpen(true);
+      return;
+    }
+
+    setIsSyncing(true);
+    try {
+      await fetch(sheetsConfig.webAppUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8'
+        },
+        body: JSON.stringify(targetDb)
+      });
+      setSheetsConfig((prev) => {
+        const updated = { ...prev, lastSyncedAt: new Date().toISOString() };
+        localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(updated));
+        return updated;
+      });
+      showToast('Rekap ke Google Sheets berhasil dikirim!');
+    } catch (err) {
+      console.error('Failed syncing to Google Sheets:', err);
+      showToast('Gagal terhubung ke Google Sheets.');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // Fetch Data from Google Sheets Web App Endpoint
+  const fetchFromSheets = async () => {
+    if (!sheetsConfig.webAppUrl) return;
+
+    setIsSyncing(true);
+    try {
+      const response = await fetch(sheetsConfig.webAppUrl);
+      const data = await response.json();
+      if (data && Array.isArray(data.produk)) {
+        setDb(data);
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data));
+        showToast('Data berhasil diperbarui dari Google Sheets!');
+      }
+    } catch (err) {
+      console.error('Failed fetching from Google Sheets:', err);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // Initial Sync check
+  useEffect(() => {
+    if (sheetsConfig.webAppUrl) {
+      fetchFromSheets();
+    }
+  }, []);
+
+  // Save Config handler
+  const handleSaveConfig = (cfg: GoogleSheetsConfig) => {
+    setSheetsConfig(cfg);
+    localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(cfg));
+    showToast('Pengaturan Google Sheets disimpan.');
+  };
+
+  // Reset Data handler
+  const handleResetData = () => {
+    if (
+      window.confirm(
+        'PERINGATAN: Apakah Anda yakin ingin menghapus SELUA data dan mengembalikan ke data sampel Toko Vidica Dewata?'
+      )
+    ) {
+      setDb(INITIAL_DATABASE);
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(INITIAL_DATABASE));
+      showToast('Database berhasil di-reset ke data awal.');
+    }
+  };
+
+  // --- CRUD: PRODUK ---
+  const handleSaveProduk = (prodData: Omit<Produk, 'id'> & { id?: string }) => {
+    let updatedProducts: Produk[];
+
+    if (prodData.id) {
+      // Edit
+      updatedProducts = db.produk.map((p) =>
+        p.id === prodData.id ? ({ ...p, ...prodData } as Produk) : p
+      );
+      showToast(`Produk "${prodData.nama}" berhasil diperbarui.`);
+    } else {
+      // Create
+      const newProd: Produk = {
+        ...prodData,
+        id: `PROD-${Date.now()}`
+      };
+      updatedProducts = [...db.produk, newProd];
+      showToast(`Produk "${prodData.nama}" berhasil ditambahkan.`);
+    }
+
+    saveDatabase({
+      ...db,
+      produk: updatedProducts
+    });
+  };
+
+  const handleDeleteProduk = (id: string) => {
+    const prod = db.produk.find((p) => p.id === id);
+    if (
+      window.confirm(
+        `Apakah Anda yakin ingin menghapus produk "${prod?.nama || 'ini'}" dari katalog?`
+      )
+    ) {
+      const updated = db.produk.filter((p) => p.id !== id);
+      saveDatabase({
+        ...db,
+        produk: updated
+      });
+      showToast('Produk berhasil dihapus.');
+    }
+  };
+
+  // --- CRUD: STOK MUTASI ---
+  const handleSaveStok = (data: {
+    idProduk: string;
+    tipe: TipeMutasi;
+    jumlah: number;
+    harga: number;
+    keterangan: string;
+    autoRecordCash: boolean;
+  }) => {
+    const newMutasi = {
+      id: `STK-${Date.now()}`,
+      date: new Date().toISOString(),
+      idProduk: data.idProduk,
+      tipe: data.tipe,
+      jumlah: data.jumlah,
+      harga: data.harga,
+      keterangan: data.keterangan
+    };
+
+    let updatedKeuangan = [...db.keuangan];
+
+    if (data.autoRecordCash) {
+      const prod = db.produk.find((p) => p.id === data.idProduk);
+      const totalNilai = data.jumlah * data.harga;
+      const isMasukStok = data.tipe === 'MASUK';
+
+      updatedKeuangan.unshift({
+        id: `KEU-AUTO-${Date.now()}`,
+        date: new Date().toISOString(),
+        tipe: isMasukStok ? 'KELUAR' : 'MASUK', // Buying stock = Cash Out; Selling stock = Cash In
+        nominal: totalNilai,
+        keterangan: `[AUTO] ${isMasukStok ? 'Pembelian' : 'Penjualan'} Stok: ${
+          data.jumlah
+        } unit ${prod?.nama || 'Barang'}`,
+        kategori: isMasukStok ? 'Pembelian Stok' : 'Penjualan'
+      });
+    }
+
+    saveDatabase({
+      ...db,
+      stok: [newMutasi, ...db.stok],
+      keuangan: updatedKeuangan
+    });
+
+    showToast(`Mutasi stok ${data.tipe} berhasil dicatat.`);
+  };
+
+  // --- CRUD: KEUANGAN ---
+  const handleSaveKeuangan = (data: {
+    tipe: TipeMutasi;
+    nominal: number;
+    keterangan: string;
+    kategori?: string;
+  }) => {
+    const newTrans = {
+      id: `KEU-${Date.now()}`,
+      date: new Date().toISOString(),
+      tipe: data.tipe,
+      nominal: data.nominal,
+      keterangan: data.keterangan,
+      kategori: data.kategori || (data.tipe === 'MASUK' ? 'Penjualan' : 'Operasional')
+    };
+
+    saveDatabase({
+      ...db,
+      keuangan: [newTrans, ...db.keuangan]
+    });
+
+    showToast(`Entri Kas (${data.tipe}) sebesar Rp ${data.nominal.toLocaleString('id-ID')} berhasil dicatat.`);
+  };
+
+  // Quick Stock Helper
+  const handleQuickStok = (p: Produk, tipe: TipeMutasi) => {
+    setStokPreselectedProd(p);
+    setStokModalTipe(tipe);
+    setIsModalStokOpen(true);
+  };
+
+  return (
+    <div className="flex h-screen overflow-hidden bg-[#050b14]">
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed top-4 right-4 z-50 glass-panel border-sky-500/40 text-sky-400 text-xs font-semibold px-4 py-3 shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-top duration-300">
+          <span className="w-2 h-2 rounded-full bg-sky-400 animate-ping" />
+          {toastMessage}
+        </div>
+      )}
+
+      {/* Navigation Sidebar */}
+      <Sidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        isOpenMobile={isOpenMobileSidebar}
+        setIsOpenMobile={setIsOpenMobileSidebar}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+      />
+
+      {/* Main Container */}
+      <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
+        {/* Top Header */}
+        <Header
+          activeTab={activeTab}
+          onToggleSidebar={() => setIsOpenMobileSidebar(!isOpenMobileSidebar)}
+          sheetsConfig={sheetsConfig}
+          onSync={() => syncToSheets()}
+          isSyncing={isSyncing}
+          onReset={handleResetData}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+        />
+
+        {/* View Router */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-8 relative z-10 hide-scroll">
+          {activeTab === 'dashboard' && (
+            <DashboardView
+              db={db}
+              onNavigate={setActiveTab}
+              onOpenModalStok={(tipe) => {
+                setStokPreselectedProd(null);
+                setStokModalTipe(tipe);
+                setIsModalStokOpen(true);
+              }}
+              onOpenModalKeuangan={(tipe) => {
+                setKeuanganModalTipe(tipe);
+                setIsModalKeuanganOpen(true);
+              }}
+              onOpenModalProduk={() => {
+                setEditingProduk(null);
+                setIsModalProdukOpen(true);
+              }}
+            />
+          )}
+
+          {activeTab === 'produk' && (
+            <ProdukView
+              db={db}
+              onOpenAddModal={() => {
+                setEditingProduk(null);
+                setIsModalProdukOpen(true);
+              }}
+              onOpenEditModal={(p) => {
+                setEditingProduk(p);
+                setIsModalProdukOpen(true);
+              }}
+              onDeleteProduk={handleDeleteProduk}
+              onQuickStok={handleQuickStok}
+            />
+          )}
+
+          {activeTab === 'stok' && (
+            <StokView
+              db={db}
+              onOpenModalStok={(tipe) => {
+                setStokPreselectedProd(null);
+                setStokModalTipe(tipe);
+                setIsModalStokOpen(true);
+              }}
+            />
+          )}
+
+          {activeTab === 'keuangan' && (
+            <KeuanganView
+              db={db}
+              onOpenModalKeuangan={(tipe) => {
+                setKeuanganModalTipe(tipe);
+                setIsModalKeuanganOpen(true);
+              }}
+            />
+          )}
+
+          {activeTab === 'laporan' && (
+            <LaporanView
+              db={db}
+              sheetsConfig={sheetsConfig}
+              onSync={() => syncToSheets()}
+              isSyncing={isSyncing}
+              onOpenSettings={() => setIsSettingsOpen(true)}
+              onImportJson={(newDb) => {
+                saveDatabase(newDb);
+                showToast('Import database JSON berhasil.');
+              }}
+            />
+          )}
+        </main>
+      </div>
+
+      {/* Modals */}
+      <ModalProduk
+        isOpen={isModalProdukOpen}
+        onClose={() => setIsModalProdukOpen(false)}
+        onSave={handleSaveProduk}
+        initialData={editingProduk}
+      />
+
+      <ModalStok
+        isOpen={isModalStokOpen}
+        onClose={() => setIsModalStokOpen(false)}
+        onSave={handleSaveStok}
+        tipe={stokModalTipe}
+        produkList={db.produk}
+        preselectedProduct={stokPreselectedProd}
+      />
+
+      <ModalKeuangan
+        isOpen={isModalKeuanganOpen}
+        onClose={() => setIsModalKeuanganOpen(false)}
+        onSave={handleSaveKeuangan}
+        tipe={keuanganModalTipe}
+      />
+
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        config={sheetsConfig}
+        onSaveConfig={handleSaveConfig}
+        onSyncNow={() => syncToSheets()}
+        isSyncing={isSyncing}
+      />
+    </div>
+  );
+}
