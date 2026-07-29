@@ -19,6 +19,7 @@ import { ModalProduk } from './components/ModalProduk';
 import { ModalStok } from './components/ModalStok';
 import { ModalKeuangan } from './components/ModalKeuangan';
 import { SettingsModal } from './components/SettingsModal';
+import { LoginScreen } from './components/LoginScreen';
 import { initAuthListener, googleSignIn, googleSignOut } from './lib/firebaseAuth';
 import { 
   syncDatabaseDirectToSheets, 
@@ -35,6 +36,7 @@ export default function App() {
   // Auth State
   const [user, setUser] = useState<User | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [isGuestMode, setIsGuestMode] = useState<boolean>(false);
 
   // Database State
   const [db, setDb] = useState<AppDatabase>(() => {
@@ -118,6 +120,7 @@ export default function App() {
       const res = await googleSignIn();
       setUser(res.user);
       setAccessToken(res.accessToken);
+      setIsGuestMode(false);
       showToast(`Login Google berhasil! Terhubung sebagai ${res.user.email}`);
     } catch (err: any) {
       console.error('Google Sign In error:', err);
@@ -129,6 +132,7 @@ export default function App() {
     await googleSignOut();
     setUser(null);
     setAccessToken(null);
+    setIsGuestMode(false);
     showToast('Berhasil keluar dari akun Google.');
   };
 
@@ -364,6 +368,15 @@ export default function App() {
     setIsModalStokOpen(true);
   };
 
+  if (!user && !isGuestMode) {
+    return (
+      <LoginScreen
+        onLoginGoogle={handleLoginGoogle}
+        onContinueAsGuest={() => setIsGuestMode(true)}
+      />
+    );
+  }
+
   return (
     <div className="flex h-screen overflow-hidden bg-[#050b14]">
       {/* Toast Notification */}
@@ -381,6 +394,8 @@ export default function App() {
         isOpenMobile={isOpenMobileSidebar}
         setIsOpenMobile={setIsOpenMobileSidebar}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        user={user}
+        onLogoutGoogle={handleLogoutGoogle}
       />
 
       {/* Main Container */}
@@ -395,6 +410,8 @@ export default function App() {
           isSyncing={isSyncing}
           onReset={handleResetData}
           onOpenSettings={() => setIsSettingsOpen(true)}
+          onLoginGoogle={handleLoginGoogle}
+          onLogoutGoogle={handleLogoutGoogle}
         />
 
         {/* View Router */}

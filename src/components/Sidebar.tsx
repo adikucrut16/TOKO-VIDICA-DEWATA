@@ -1,5 +1,6 @@
 import React from 'react';
 import { ViewTab } from '../types';
+import { User } from 'firebase/auth';
 import { 
   LayoutDashboard, 
   Package, 
@@ -8,7 +9,9 @@ import {
   FileText, 
   X, 
   Layers, 
-  Sliders
+  Sliders,
+  LogOut,
+  UserCheck
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -17,6 +20,8 @@ interface SidebarProps {
   isOpenMobile: boolean;
   setIsOpenMobile: (open: boolean) => void;
   onOpenSettings: () => void;
+  user?: User | null;
+  onLogoutGoogle?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -24,7 +29,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setActiveTab,
   isOpenMobile,
   setIsOpenMobile,
-  onOpenSettings
+  onOpenSettings,
+  user,
+  onLogoutGoogle
 }) => {
   const menuItems: { id: ViewTab; label: string; icon: React.ReactNode }[] = [
     { id: 'dashboard', label: 'Dashboard Analitik', icon: <LayoutDashboard className="w-5 h-5" /> },
@@ -107,18 +114,43 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <span>Pengaturan & Sync</span>
           </button>
 
-          <div className="flex items-center gap-3 px-4 py-3 bg-slate-800/40 rounded-xl border border-slate-800">
-            <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-bold text-white shadow-sm">
-              AD
+          {user ? (
+            <div className="flex items-center gap-2.5 p-2.5 bg-slate-800/60 rounded-xl border border-slate-800">
+              {user.photoURL ? (
+                <img src={user.photoURL} alt="Avatar" className="w-8 h-8 rounded-full border border-indigo-500/50" />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-600 to-sky-500 flex items-center justify-center text-xs font-bold text-white shadow-sm">
+                  {user.displayName?.charAt(0) || user.email?.charAt(0) || 'G'}
+                </div>
+              )}
+              <div className="flex-1 overflow-hidden">
+                <p className="text-xs font-semibold text-slate-200 truncate">{user.displayName || 'Akun Google'}</p>
+                <p className="text-[10px] text-indigo-400 font-mono truncate">{user.email}</p>
+              </div>
+              {onLogoutGoogle && (
+                <button
+                  onClick={onLogoutGoogle}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                  title="Keluar dari Google Account"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              )}
             </div>
-            <div className="flex-1 overflow-hidden">
-              <p className="text-xs font-semibold text-slate-200 truncate">Admin Toko</p>
-              <p className="text-[10px] text-emerald-400 flex items-center gap-1 font-medium">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>{' '}
-                Online
-              </p>
+          ) : (
+            <div className="flex items-center gap-3 px-4 py-3 bg-slate-800/40 rounded-xl border border-slate-800">
+              <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-300 shadow-sm">
+                <UserCheck className="w-4 h-4 text-indigo-400" />
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <p className="text-xs font-semibold text-slate-300 truncate">Mode Akses</p>
+                <p className="text-[10px] text-amber-400 flex items-center gap-1 font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>{' '}
+                  Belum Otorisasi
+                </p>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </aside>
     </>

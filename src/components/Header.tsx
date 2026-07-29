@@ -1,6 +1,6 @@
 import React from 'react';
 import { ViewTab, GoogleSheetsConfig } from '../types';
-import { Menu, RefreshCw, Calendar, Trash2, Sliders, ShieldCheck } from 'lucide-react';
+import { Menu, RefreshCw, Calendar, Trash2, Sliders, ShieldCheck, LogIn, LogOut } from 'lucide-react';
 import { User } from 'firebase/auth';
 
 interface HeaderProps {
@@ -12,6 +12,8 @@ interface HeaderProps {
   isSyncing: boolean;
   onReset: () => void;
   onOpenSettings: () => void;
+  onLoginGoogle?: () => void;
+  onLogoutGoogle?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -22,7 +24,9 @@ export const Header: React.FC<HeaderProps> = ({
   onSync,
   isSyncing,
   onReset,
-  onOpenSettings
+  onOpenSettings,
+  onLoginGoogle,
+  onLogoutGoogle
 }) => {
   const pageTitles: Record<ViewTab, string> = {
     dashboard: 'Dashboard Analitik',
@@ -87,14 +91,44 @@ export const Header: React.FC<HeaderProps> = ({
           <Sliders className="w-4 h-4" />
         </button>
 
-        {/* Reset Data Button */}
-        <button
-          onClick={onReset}
-          className="text-xs p-2 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 transition-colors shadow-xs"
-          title="Reset semua data ke awal"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
+        {/* User Account / Google Auth Status Badge */}
+        {user ? (
+          <div className="flex items-center gap-2 pl-1 border-l border-slate-200">
+            {user.photoURL ? (
+              <img src={user.photoURL} alt="User" className="w-8 h-8 rounded-full border border-indigo-300" />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center">
+                {user.displayName?.charAt(0) || 'G'}
+              </div>
+            )}
+            <div className="hidden lg:block text-left text-xs leading-tight">
+              <p className="font-bold text-slate-800 truncate max-w-[120px]">{user.displayName || 'Akun Google'}</p>
+              <p className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Google Connected
+              </p>
+            </div>
+            {onLogoutGoogle && (
+              <button
+                onClick={onLogoutGoogle}
+                className="text-xs p-2 rounded-xl border border-slate-200 text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                title="Logout dari Akun Google"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        ) : (
+          onLoginGoogle && (
+            <button
+              onClick={onLoginGoogle}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-slate-900 text-white hover:bg-slate-800 transition-colors shadow-2xs cursor-pointer"
+              title="Login dengan Google Account"
+            >
+              <LogIn className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="hidden sm:inline">Login Google</span>
+            </button>
+          )
+        )}
       </div>
     </header>
   );

@@ -10,17 +10,19 @@ provider.addScope('https://www.googleapis.com/auth/spreadsheets');
 provider.addScope('https://www.googleapis.com/auth/drive.file');
 
 let isSigningIn = false;
-let cachedAccessToken: string | null = null;
+let cachedAccessToken: string | null = sessionStorage.getItem('google_access_token');
 
 export const initAuthListener = (
   onAuthSuccess: (user: User, token: string) => void,
   onAuthFailure: () => void
 ) => {
   return onAuthStateChanged(auth, async (user: User | null) => {
-    if (user && cachedAccessToken) {
-      onAuthSuccess(user, cachedAccessToken);
+    if (user) {
+      const storedToken = sessionStorage.getItem('google_access_token') || cachedAccessToken || '';
+      onAuthSuccess(user, storedToken);
     } else {
       cachedAccessToken = null;
+      sessionStorage.removeItem('google_access_token');
       onAuthFailure();
     }
   });
@@ -35,6 +37,7 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
       throw new Error('Gagal mengisolasi Access Token dari login Google.');
     }
     cachedAccessToken = credential.accessToken;
+    sessionStorage.setItem('google_access_token', cachedAccessToken);
     return { user: result.user, accessToken: cachedAccessToken };
   } finally {
     isSigningIn = false;
@@ -42,14 +45,20 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
 };
 
 export const getAccessToken = (): string | null => {
-  return cachedAccessToken;
+  return cachedAccessToken || sessionStorage.getItem('google_access_token');
 };
 
 export const setAccessToken = (token: string | null) => {
   cachedAccessToken = token;
+  if (token) {
+    sessionStorage.setItem('google_access_token', token);
+  } else {
+    sessionStorage.removeItem('google_access_token');
+  }
 };
 
 export const googleSignOut = async () => {
   await signOut(auth);
   cachedAccessToken = null;
+  sessionStorage.removeItem('google_access_token');
 };
