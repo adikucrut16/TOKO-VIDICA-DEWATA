@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { User } from 'firebase/auth';
 import { 
   AppDatabase, 
   ViewTab, 
@@ -18,11 +19,17 @@ import { ModalProduk } from './components/ModalProduk';
 import { ModalStok } from './components/ModalStok';
 import { ModalKeuangan } from './components/ModalKeuangan';
 import { SettingsModal } from './components/SettingsModal';
+import { initAuthListener, googleSignIn, googleSignOut } from './lib/firebaseAuth';
+import { syncDatabaseDirectToSheets, TARGET_SPREADSHEET_ID, TARGET_SPREADSHEET_URL } from './lib/googleSheets';
 
 const LOCAL_STORAGE_KEY = 'vidicaDataFuturistic';
 const CONFIG_STORAGE_KEY = 'vidicaSheetsConfig';
 
 export default function App() {
+  // Auth State
+  const [user, setUser] = useState<User | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+
   // Database State
   const [db, setDb] = useState<AppDatabase>(() => {
     try {
@@ -41,20 +48,19 @@ export default function App() {
 
   // Google Sheets Config State
   const [sheetsConfig, setSheetsConfig] = useState<GoogleSheetsConfig>(() => {
-    const defaultUrl = 'https://docs.google.com/spreadsheets/d/1nCS_IWOeTlxxaUHKG3n6GnfHQrv7hXrzO6ErK72qMBY/edit';
     try {
       const saved = localStorage.getItem(CONFIG_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
         return {
           ...parsed,
-          spreadsheetUrl: parsed.spreadsheetUrl || defaultUrl
+          spreadsheetUrl: parsed.spreadsheetUrl || TARGET_SPREADSHEET_URL
         };
       }
     } catch (e) {
       console.error('Failed to parse sheets config:', e);
     }
-    return { webAppUrl: '', spreadsheetUrl: defaultUrl, autoSync: true };
+    return { webAppUrl: '', spreadsheetUrl: TARGET_SPREADSHEET_URL, autoSync: true };
   });
 
   // UI Navigation State
@@ -76,15 +82,98 @@ export default function App() {
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
+  // Auth Listener Initialization
+  useEffect(() => {
+    const unsubscribe = initAuthListener(
+      (currentUser, token) => {
+        setUser(currentUser);
+        setAccessToken(token);
+      },
+      () => {
+        setUser(null);
+        setAccessToken(null);
+      }
+    );
+    return () => unsubscribe();
+  }, []);
+
   // Show Toast Message helper
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => {
       setToastMessage((prev) => (prev === msg ? null : prev));
-    }, 3000);
+    }, 3500);
   };
 
-  // Save to LocalStorage & Optional Google Sheets Sync
+  // Google Login / Logout handlers
+  const handleLoginGoogle = async () => {
+    try {
+      const res = await googleSignIn();
+      setUser(res.user);
+      setAccessToken(res.accessToken);
+      showToast(`Login Google berhasil! Terhubung sebagai ${res.user.email}`);
+    } catch (err: any) {
+      console.error('Google Sign In error:', err);
+      showToast(err.message || 'Gagal login dengan Google.');
+    }
+  };
+
+  const handleLogoutGoogle = async () => {
+    await googleSignOut();
+    setUser(null);
+    setAccessToken(null);
+    showToast('Berhasil keluar dari akun Google.');
+  };
+
+  // Direct Google Sheets Synchronization
+  const syncToSheets = async (targetDb = db) => {
+    let activeToken = accessToken;
+
+    if (!activeToken) {
+      try {
+        const res = await googleSignIn();
+        setUser(res.user);
+        setAccessToken(res.accessToken);
+        activeToken = res.accessToken;
+      } catch (err: any) {
+        showToast('Diperlukan otorisasi akun Google untuk merekap ke spreadsheet.');
+        return;
+      }
+    }
+
+    const confirmed = window.confirm(
+      'Apakah Anda ingin menyinkronkan dan memperbarui data di Google Spreadsheet?'
+    );
+    if (!confirmed) return;
+
+    setIsSyncing(true);
+    try {
+      const result = await syncDatabaseDirectToSheets(
+        targetDb,
+        activeToken,
+        sheetsConfig.spreadsheetUrl || TARGET_SPREADSHEET_ID
+      );
+
+      if (result.success) {
+        const nowStr = new Date().toISOString();
+        setSheetsConfig((prev) => {
+          const updated = { ...prev, lastSyncedAt: nowStr };
+          localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(updated));
+          return updated;
+        });
+        showToast(result.message);
+      } else {
+        showToast(result.message);
+      }
+    } catch (err: any) {
+      console.error('Sync error:', err);
+      showToast('Gagal merekap ke Google Sheets.');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // Save to LocalStorage & Optional Direct Auto Sync
   const saveDatabase = (newDb: AppDatabase) => {
     setDb(newDb);
     try {
@@ -93,69 +182,23 @@ export default function App() {
       console.error('Failed to save to local storage:', e);
     }
 
-    if (sheetsConfig.webAppUrl && sheetsConfig.autoSync) {
-      syncToSheets(newDb);
-    }
-  };
-
-  // Sync Data to Google Sheets Web App Endpoint
-  const syncToSheets = async (targetDb = db) => {
-    if (!sheetsConfig.webAppUrl) {
-      showToast('URL Google Sheets belum diatur. Buka Pengaturan untuk memasukkan URL Web App.');
-      setIsSettingsOpen(true);
-      return;
-    }
-
-    setIsSyncing(true);
-    try {
-      await fetch(sheetsConfig.webAppUrl, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: {
-          'Content-Type': 'text/plain;charset=utf-8'
-        },
-        body: JSON.stringify(targetDb)
+    if (sheetsConfig.autoSync && accessToken) {
+      syncDatabaseDirectToSheets(
+        newDb,
+        accessToken,
+        sheetsConfig.spreadsheetUrl || TARGET_SPREADSHEET_ID
+      ).then((res) => {
+        if (res.success) {
+          const nowStr = new Date().toISOString();
+          setSheetsConfig((prev) => {
+            const updated = { ...prev, lastSyncedAt: nowStr };
+            localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(updated));
+            return updated;
+          });
+        }
       });
-      setSheetsConfig((prev) => {
-        const updated = { ...prev, lastSyncedAt: new Date().toISOString() };
-        localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(updated));
-        return updated;
-      });
-      showToast('Rekap ke Google Sheets berhasil dikirim!');
-    } catch (err) {
-      console.error('Failed syncing to Google Sheets:', err);
-      showToast('Gagal terhubung ke Google Sheets.');
-    } finally {
-      setIsSyncing(false);
     }
   };
-
-  // Fetch Data from Google Sheets Web App Endpoint
-  const fetchFromSheets = async () => {
-    if (!sheetsConfig.webAppUrl) return;
-
-    setIsSyncing(true);
-    try {
-      const response = await fetch(sheetsConfig.webAppUrl);
-      const data = await response.json();
-      if (data && Array.isArray(data.produk)) {
-        setDb(data);
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data));
-        showToast('Data berhasil diperbarui dari Google Sheets!');
-      }
-    } catch (err) {
-      console.error('Failed fetching from Google Sheets:', err);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  // Initial Sync check
-  useEffect(() => {
-    if (sheetsConfig.webAppUrl) {
-      fetchFromSheets();
-    }
-  }, []);
 
   // Save Config handler
   const handleSaveConfig = (cfg: GoogleSheetsConfig) => {
@@ -323,6 +366,7 @@ export default function App() {
           activeTab={activeTab}
           onToggleSidebar={() => setIsOpenMobileSidebar(!isOpenMobileSidebar)}
           sheetsConfig={sheetsConfig}
+          user={user}
           onSync={() => syncToSheets()}
           isSyncing={isSyncing}
           onReset={handleResetData}
@@ -432,6 +476,9 @@ export default function App() {
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         config={sheetsConfig}
+        user={user}
+        onLoginGoogle={handleLoginGoogle}
+        onLogoutGoogle={handleLogoutGoogle}
         onSaveConfig={handleSaveConfig}
         onSyncNow={() => syncToSheets()}
         isSyncing={isSyncing}

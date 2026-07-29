@@ -247,7 +247,7 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
 
         <div className="flex items-center justify-between pt-1">
           <p className="text-[11px] text-indigo-300/80">
-            Perlu mengatur URL Apps Script? Buka panel Pengaturan untuk melihat panduan integrasi.
+            Integrasi langsung via Google Sheets API v4 (Tanpa Apps Script).
           </p>
 
           {onOpenSettings && (
@@ -255,7 +255,7 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
               onClick={onOpenSettings}
               className="text-xs font-semibold text-indigo-300 hover:text-white flex items-center gap-1 cursor-pointer"
             >
-              <Sliders className="w-3.5 h-3.5" /> Pengaturan Web App
+              <Sliders className="w-3.5 h-3.5" /> Pengaturan Direct Sheets
             </button>
           )}
         </div>
