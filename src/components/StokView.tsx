@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { AppDatabase } from '../types';
-import { ArrowDownLeft, ArrowUpRight, Search, ArrowLeftRight } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Search, ArrowLeftRight, Trash2 } from 'lucide-react';
 
 interface StokViewProps {
   db: AppDatabase;
   onOpenModalStok: (tipe: 'MASUK' | 'KELUAR') => void;
+  onDeleteStok?: (id: string) => void;
 }
 
-export const StokView: React.FC<StokViewProps> = ({ db, onOpenModalStok }) => {
+export const StokView: React.FC<StokViewProps> = ({ db, onOpenModalStok, onDeleteStok }) => {
   const [search, setSearch] = useState('');
   const [filterTipe, setFilterTipe] = useState<'ALL' | 'MASUK' | 'KELUAR'>('ALL');
 
@@ -130,12 +131,13 @@ export const StokView: React.FC<StokViewProps> = ({ db, onOpenModalStok }) => {
                 <th className="px-6 py-4 text-right">Harga Satuan</th>
                 <th className="px-6 py-4 text-right">Total Nilai</th>
                 <th className="px-6 py-4">Keterangan</th>
+                <th className="px-6 py-4 text-center">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm">
               {filteredLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-10 text-center text-slate-400">
+                  <td colSpan={8} className="px-6 py-10 text-center text-slate-400">
                     Belum ada riwayat mutasi stok.
                   </td>
                 </tr>
@@ -186,6 +188,17 @@ export const StokView: React.FC<StokViewProps> = ({ db, onOpenModalStok }) => {
                       </td>
                       <td className="px-6 py-4 text-slate-600 text-xs truncate max-w-xs">
                         {s.keterangan || '-'}
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        {onDeleteStok && (
+                          <button
+                            onClick={() => onDeleteStok(s.id)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                            title="Hapus Entri Mutasi Stok"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );

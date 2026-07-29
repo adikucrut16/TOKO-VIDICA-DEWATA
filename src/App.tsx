@@ -323,6 +323,16 @@ export default function App() {
     showToast(`Mutasi stok ${data.tipe} berhasil dicatat.`);
   };
 
+  const handleDeleteStok = (id: string) => {
+    if (window.confirm('Apakah Anda yakin ingin menghapus entri mutasi stok ini?')) {
+      saveDatabase({
+        ...db,
+        stok: db.stok.filter((s) => s.id !== id)
+      });
+      showToast('Entri mutasi stok berhasil dihapus.');
+    }
+  };
+
   // --- CRUD: KEUANGAN ---
   const handleSaveKeuangan = (data: {
     tipe: TipeMutasi;
@@ -433,6 +443,7 @@ export default function App() {
                 setStokModalTipe(tipe);
                 setIsModalStokOpen(true);
               }}
+              onDeleteStok={handleDeleteStok}
             />
           )}
 
