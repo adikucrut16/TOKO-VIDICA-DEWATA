@@ -17,6 +17,8 @@ interface SettingsModalProps {
 
 const TARGET_SPREADSHEET_URL = 'https://docs.google.com/spreadsheets/d/1nCS_IWOeTlxxaUHKG3n6GnfHQrv7hXrzO6ErK72qMBY/edit?gid=0#gid=0';
 
+const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyQ3JzxhhWCpOgk0R2mvYjilDmN5-GEyUH0yXC86G_PpN-PU6WtYo05GvvWlTi438touA/exec';
+
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,
   onClose,
@@ -28,6 +30,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onSyncNow,
   isSyncing
 }) => {
+  const [webAppUrl, setWebAppUrl] = useState(config.webAppUrl || DEFAULT_APPS_SCRIPT_URL);
   const [spreadsheetUrl, setSpreadsheetUrl] = useState(config.spreadsheetUrl || TARGET_SPREADSHEET_URL);
   const [autoSync, setAutoSync] = useState(config.autoSync);
   const [savedSuccess, setSavedSuccess] = useState(false);
@@ -37,7 +40,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     onSaveConfig({
-      webAppUrl: '',
+      webAppUrl: webAppUrl.trim(),
       spreadsheetUrl: spreadsheetUrl.trim() || TARGET_SPREADSHEET_URL,
       autoSync,
       lastSyncedAt: config.lastSyncedAt
@@ -148,6 +151,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 value={spreadsheetUrl}
                 onChange={(e) => setSpreadsheetUrl(e.target.value)}
                 placeholder="https://docs.google.com/spreadsheets/d/1nCS_IWOeTlxxaUHKG3n6GnfHQrv7hXrzO6ErK72qMBY/edit"
+                className="input-futuristic text-xs font-mono bg-white"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-indigo-800 uppercase tracking-wider mb-1">
+                URL Deployment Apps Script Web App
+              </label>
+              <input
+                type="url"
+                value={webAppUrl}
+                onChange={(e) => setWebAppUrl(e.target.value)}
+                placeholder="https://script.google.com/macros/s/.../exec"
                 className="input-futuristic text-xs font-mono bg-white"
               />
             </div>

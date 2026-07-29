@@ -20,7 +20,13 @@ import { ModalStok } from './components/ModalStok';
 import { ModalKeuangan } from './components/ModalKeuangan';
 import { SettingsModal } from './components/SettingsModal';
 import { initAuthListener, googleSignIn, googleSignOut } from './lib/firebaseAuth';
-import { syncDatabaseDirectToSheets, TARGET_SPREADSHEET_ID, TARGET_SPREADSHEET_URL } from './lib/googleSheets';
+import { 
+  syncDatabaseDirectToSheets, 
+  syncToWebApp, 
+  TARGET_SPREADSHEET_ID, 
+  TARGET_SPREADSHEET_URL, 
+  DEFAULT_WEB_APP_URL 
+} from './lib/googleSheets';
 
 const LOCAL_STORAGE_KEY = 'vidicaDataFuturistic';
 const CONFIG_STORAGE_KEY = 'vidicaSheetsConfig';
@@ -54,13 +60,14 @@ export default function App() {
         const parsed = JSON.parse(saved);
         return {
           ...parsed,
+          webAppUrl: parsed.webAppUrl || DEFAULT_WEB_APP_URL,
           spreadsheetUrl: parsed.spreadsheetUrl || TARGET_SPREADSHEET_URL
         };
       }
     } catch (e) {
       console.error('Failed to parse sheets config:', e);
     }
-    return { webAppUrl: '', spreadsheetUrl: TARGET_SPREADSHEET_URL, autoSync: true };
+    return { webAppUrl: DEFAULT_WEB_APP_URL, spreadsheetUrl: TARGET_SPREADSHEET_URL, autoSync: true };
   });
 
   // UI Navigation State
@@ -125,51 +132,52 @@ export default function App() {
     showToast('Berhasil keluar dari akun Google.');
   };
 
-  // Direct Google Sheets Synchronization
+  // Google Sheets Synchronization (Direct API + Apps Script Web App Endpoint)
   const syncToSheets = async (targetDb = db) => {
-    let activeToken = accessToken;
-
-    if (!activeToken) {
-      try {
-        const res = await googleSignIn();
-        setUser(res.user);
-        setAccessToken(res.accessToken);
-        activeToken = res.accessToken;
-      } catch (err: any) {
-        showToast('Diperlukan otorisasi akun Google untuk merekap ke spreadsheet.');
-        return;
-      }
-    }
-
     const confirmed = window.confirm(
       'Apakah Anda ingin menyinkronkan dan memperbarui data di Google Spreadsheet?'
     );
     if (!confirmed) return;
 
     setIsSyncing(true);
-    try {
-      const result = await syncDatabaseDirectToSheets(
+    let successCount = 0;
+    let messages: string[] = [];
+
+    // 1. Sync via Apps Script Web App endpoint if available
+    const targetWebAppUrl = sheetsConfig.webAppUrl || DEFAULT_WEB_APP_URL;
+    if (targetWebAppUrl) {
+      const webAppRes = await syncToWebApp(targetDb, targetWebAppUrl);
+      if (webAppRes.success) {
+        successCount++;
+        messages.push('Kirim ke Apps Script berhasil');
+      }
+    }
+
+    // 2. Sync via Direct Google Sheets API if logged in
+    if (accessToken) {
+      const directRes = await syncDatabaseDirectToSheets(
         targetDb,
-        activeToken,
+        accessToken,
         sheetsConfig.spreadsheetUrl || TARGET_SPREADSHEET_ID
       );
-
-      if (result.success) {
-        const nowStr = new Date().toISOString();
-        setSheetsConfig((prev) => {
-          const updated = { ...prev, lastSyncedAt: nowStr };
-          localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(updated));
-          return updated;
-        });
-        showToast(result.message);
-      } else {
-        showToast(result.message);
+      if (directRes.success) {
+        successCount++;
+        messages.push('Direct Sheets API berhasil');
       }
-    } catch (err: any) {
-      console.error('Sync error:', err);
-      showToast('Gagal merekap ke Google Sheets.');
-    } finally {
-      setIsSyncing(false);
+    }
+
+    setIsSyncing(false);
+
+    if (successCount > 0) {
+      const nowStr = new Date().toISOString();
+      setSheetsConfig((prev) => {
+        const updated = { ...prev, lastSyncedAt: nowStr };
+        localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(updated));
+        return updated;
+      });
+      showToast(`Rekap ke Google Sheets Berhasil! (${messages.join(', ')})`);
+    } else {
+      showToast('Gagal merekap ke Google Sheets. Periksa koneksi atau otorisasi.');
     }
   };
 
@@ -182,21 +190,27 @@ export default function App() {
       console.error('Failed to save to local storage:', e);
     }
 
-    if (sheetsConfig.autoSync && accessToken) {
-      syncDatabaseDirectToSheets(
-        newDb,
-        accessToken,
-        sheetsConfig.spreadsheetUrl || TARGET_SPREADSHEET_ID
-      ).then((res) => {
-        if (res.success) {
-          const nowStr = new Date().toISOString();
-          setSheetsConfig((prev) => {
-            const updated = { ...prev, lastSyncedAt: nowStr };
-            localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(updated));
-            return updated;
-          });
-        }
-      });
+    if (sheetsConfig.autoSync) {
+      const targetWebAppUrl = sheetsConfig.webAppUrl || DEFAULT_WEB_APP_URL;
+      if (targetWebAppUrl) {
+        syncToWebApp(newDb, targetWebAppUrl);
+      }
+      if (accessToken) {
+        syncDatabaseDirectToSheets(
+          newDb,
+          accessToken,
+          sheetsConfig.spreadsheetUrl || TARGET_SPREADSHEET_ID
+        ).then((res) => {
+          if (res.success) {
+            const nowStr = new Date().toISOString();
+            setSheetsConfig((prev) => {
+              const updated = { ...prev, lastSyncedAt: nowStr };
+              localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(updated));
+              return updated;
+            });
+          }
+        });
+      }
     }
   };
 

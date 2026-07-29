@@ -2,6 +2,31 @@ import { AppDatabase } from '../types';
 
 export const TARGET_SPREADSHEET_ID = '1nCS_IWOeTlxxaUHKG3n6GnfHQrv7hXrzO6ErK72qMBY';
 export const TARGET_SPREADSHEET_URL = `https://docs.google.com/spreadsheets/d/${TARGET_SPREADSHEET_ID}/edit?gid=0#gid=0`;
+export const DEFAULT_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyQ3JzxhhWCpOgk0R2mvYjilDmN5-GEyUH0yXC86G_PpN-PU6WtYo05GvvWlTi438touA/exec';
+
+export async function syncToWebApp(db: AppDatabase, webAppUrl = DEFAULT_WEB_APP_URL): Promise<{ success: boolean; message: string }> {
+  try {
+    const url = webAppUrl.trim() || DEFAULT_WEB_APP_URL;
+    await fetch(url, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8'
+      },
+      body: JSON.stringify(db)
+    });
+    return {
+      success: true,
+      message: 'Data berhasil dikirim ke Google Apps Script Web App!'
+    };
+  } catch (err: any) {
+    console.error('Web App sync error:', err);
+    return {
+      success: false,
+      message: err.message || 'Gagal mengirim data ke Apps Script Web App.'
+    };
+  }
+}
 
 export function extractSpreadsheetId(urlOrId: string): string {
   if (!urlOrId) return TARGET_SPREADSHEET_ID;
