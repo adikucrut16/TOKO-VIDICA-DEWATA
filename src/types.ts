@@ -30,13 +30,43 @@ export interface TransaksiKeuangan {
   kategori?: string;
 }
 
+export interface Customer {
+  id: string;
+  namaCustomer: string;
+  alamat: string;
+  pic: string;
+  noTelp: string;
+}
+
+export interface ItemPengiriman {
+  idProduk: string;
+  namaProduk: string;
+  quantity: number;
+  satuan: string;
+}
+
+export interface Pengiriman {
+  id: string;
+  tanggal: string;
+  idCustomer?: string;
+  namaCustomer: string;
+  alamat?: string;
+  noTelp?: string;
+  items: ItemPengiriman[];
+  catatan?: string;
+  status?: 'PROSES' | 'TERKIRIM' | 'BATAL';
+}
+
 export interface AppDatabase {
   produk: Produk[];
   stok: MutasiStok[];
   keuangan: TransaksiKeuangan[];
+  customer?: Customer[];
+  pengiriman?: Pengiriman[];
+  customKategori?: string[];
 }
 
-export type ViewTab = 'dashboard' | 'produk' | 'stok' | 'keuangan' | 'laporan';
+export type ViewTab = 'dashboard' | 'produk' | 'stok' | 'keuangan' | 'customer' | 'pengiriman' | 'laporan';
 
 export interface GoogleSheetsConfig {
   webAppUrl: string;
@@ -44,3 +74,4 @@ export interface GoogleSheetsConfig {
   autoSync: boolean;
   lastSyncedAt?: string;
 }
+

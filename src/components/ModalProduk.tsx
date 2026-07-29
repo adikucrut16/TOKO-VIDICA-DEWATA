@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Produk } from '../types';
-import { X, Save, Package, Plus, List } from 'lucide-react';
+import { X, Save, Package, Plus, List, Trash2 } from 'lucide-react';
 
 interface ModalProdukProps {
   isOpen: boolean;
@@ -8,6 +8,7 @@ interface ModalProdukProps {
   onSave: (p: Omit<Produk, 'id'> & { id?: string }) => void;
   initialData?: Produk | null;
   existingCategories?: string[];
+  onDeleteCategory?: (categoryName: string) => void;
 }
 
 const DEFAULT_CATEGORIES = ['Makanan', 'Minuman', 'Rokok', 'Sembako', 'Elektronik', 'Lainnya'];
@@ -17,8 +18,10 @@ export const ModalProduk: React.FC<ModalProdukProps> = ({
   onClose,
   onSave,
   initialData,
-  existingCategories = []
+  existingCategories = [],
+  onDeleteCategory
 }) => {
+
   const [sku, setSku] = useState('');
   const [nama, setNama] = useState('');
   const [kategoriSelect, setKategoriSelect] = useState('Makanan');
@@ -70,7 +73,21 @@ export const ModalProduk: React.FC<ModalProdukProps> = ({
     }
   }, [initialData, isOpen, allCategories]);
 
+  const handleDeleteCurrentCategory = () => {
+    const catToDelete = isCustomMode ? customKategori.trim() : kategoriSelect;
+    if (!catToDelete) return;
+    if (window.confirm(`Hapus kategori "${catToDelete}"?`)) {
+      if (onDeleteCategory) {
+        onDeleteCategory(catToDelete);
+      }
+      setKategoriSelect('Makanan');
+      setIsCustomMode(false);
+      setCustomKategori('');
+    }
+  };
+
   if (!isOpen) return null;
+
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -177,38 +194,51 @@ export const ModalProduk: React.FC<ModalProdukProps> = ({
                 </button>
               </div>
 
-              {isCustomMode ? (
-                <input
-                  type="text"
-                  required
-                  value={customKategori}
-                  onChange={(e) => setCustomKategori(e.target.value)}
-                  placeholder="Ketik Kategori Baru..."
-                  className="input-futuristic text-sm focus:border-indigo-500"
-                  autoFocus
-                />
-              ) : (
-                <select
-                  value={kategoriSelect}
-                  onChange={(e) => {
-                    if (e.target.value === '__CUSTOM__') {
-                      setIsCustomMode(true);
-                    } else {
-                      setKategoriSelect(e.target.value);
-                    }
-                  }}
-                  className="input-futuristic text-sm cursor-pointer"
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  {isCustomMode ? (
+                    <input
+                      type="text"
+                      required
+                      value={customKategori}
+                      onChange={(e) => setCustomKategori(e.target.value)}
+                      placeholder="Ketik Kategori Baru..."
+                      className="input-futuristic text-sm focus:border-indigo-500"
+                      autoFocus
+                    />
+                  ) : (
+                    <select
+                      value={kategoriSelect}
+                      onChange={(e) => {
+                        if (e.target.value === '__CUSTOM__') {
+                          setIsCustomMode(true);
+                        } else {
+                          setKategoriSelect(e.target.value);
+                        }
+                      }}
+                      className="input-futuristic text-sm cursor-pointer"
+                    >
+                      {allCategories.map((cat) => (
+                        <option key={cat} value={cat} className="bg-white text-slate-800">
+                          {cat}
+                        </option>
+                      ))}
+                      <option value="__CUSTOM__" className="bg-white text-indigo-600 font-semibold">
+                        + Kategori Custom Baru...
+                      </option>
+                    </select>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDeleteCurrentCategory}
+                  className="p-2.5 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 hover:border-rose-300 transition-colors cursor-pointer shrink-0"
+                  title="Hapus Kategori Ini"
                 >
-                  {allCategories.map((cat) => (
-                    <option key={cat} value={cat} className="bg-white text-slate-800">
-                      {cat}
-                    </option>
-                  ))}
-                  <option value="__CUSTOM__" className="bg-white text-indigo-600 font-semibold">
-                    + Kategori Custom Baru...
-                  </option>
-                </select>
-              )}
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+
             </div>
 
             <div>

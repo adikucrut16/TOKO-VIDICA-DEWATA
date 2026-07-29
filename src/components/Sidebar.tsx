@@ -11,7 +11,9 @@ import {
   Layers, 
   Sliders,
   LogOut,
-  UserCheck
+  UserCheck,
+  Users,
+  Truck
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -38,8 +40,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'produk', label: 'Katalog Produk', icon: <Package className="w-5 h-5" /> },
     { id: 'stok', label: 'Mutasi Stok', icon: <ArrowLeftRight className="w-5 h-5" /> },
     { id: 'keuangan', label: 'Kas & Keuangan', icon: <Wallet className="w-5 h-5" /> },
+    { id: 'customer', label: 'Daftar Customer', icon: <Users className="w-5 h-5" /> },
+    { id: 'pengiriman', label: 'Menu Pengiriman', icon: <Truck className="w-5 h-5" /> },
     { id: 'laporan', label: 'Laporan & Export', icon: <FileText className="w-5 h-5" /> },
   ];
+
 
   return (
     <>

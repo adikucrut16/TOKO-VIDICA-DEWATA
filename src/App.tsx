@@ -5,7 +5,9 @@ import {
   ViewTab, 
   Produk, 
   TipeMutasi, 
-  GoogleSheetsConfig 
+  GoogleSheetsConfig,
+  Customer,
+  Pengiriman 
 } from './types';
 import { INITIAL_DATABASE } from './data/initialData';
 import { Sidebar } from './components/Sidebar';
@@ -14,8 +16,11 @@ import { DashboardView } from './components/DashboardView';
 import { ProdukView } from './components/ProdukView';
 import { StokView } from './components/StokView';
 import { KeuanganView } from './components/KeuanganView';
+import { CustomerView } from './components/CustomerView';
+import { PengirimanView } from './components/PengirimanView';
 import { LaporanView } from './components/LaporanView';
 import { ModalProduk } from './components/ModalProduk';
+
 import { ModalStok } from './components/ModalStok';
 import { ModalKeuangan } from './components/ModalKeuangan';
 import { SettingsModal } from './components/SettingsModal';
@@ -361,6 +366,116 @@ export default function App() {
     showToast(`Entri Kas (${data.tipe}) sebesar Rp ${data.nominal.toLocaleString('id-ID')} berhasil dicatat.`);
   };
 
+  // --- CRUD: KATEGORI ---
+  const handleDeleteCategory = (categoryName: string) => {
+    const updatedCustom = (db.customKategori || []).filter(
+      (c) => c.toLowerCase() !== categoryName.toLowerCase()
+    );
+    saveDatabase({
+      ...db,
+      customKategori: updatedCustom
+    });
+    showToast(`Kategori "${categoryName}" berhasil dihapus.`);
+  };
+
+  // --- CRUD: CUSTOMER ---
+  const handleSaveCustomer = (custData: Omit<Customer, 'id'> & { id?: string }) => {
+    const currentList = db.customer || [];
+    let updatedList: Customer[];
+
+    if (custData.id) {
+      updatedList = currentList.map((c) =>
+        c.id === custData.id ? ({ ...c, ...custData } as Customer) : c
+      );
+      showToast(`Data customer "${custData.namaCustomer}" berhasil diperbarui.`);
+    } else {
+      const newCust: Customer = {
+        ...custData,
+        id: `CUST-${Date.now()}`
+      };
+      updatedList = [newCust, ...currentList];
+      showToast(`Customer "${custData.namaCustomer}" berhasil ditambahkan.`);
+    }
+
+    saveDatabase({
+      ...db,
+      customer: updatedList
+    });
+  };
+
+  const handleDeleteCustomer = (id: string) => {
+    const currentList = db.customer || [];
+    const target = currentList.find((c) => c.id === id);
+    const updated = currentList.filter((c) => c.id !== id);
+    saveDatabase({
+      ...db,
+      customer: updated
+    });
+    showToast(`Customer "${target?.namaCustomer || ''}" berhasil dihapus.`);
+  };
+
+  // --- CRUD: PENGIRIMAN ---
+  const handleSavePengiriman = (
+    pengirimanData: Omit<Pengiriman, 'id'> & { id?: string },
+    deductStock: boolean = true
+  ) => {
+    const currentList = db.pengiriman || [];
+    const newPengiriman: Pengiriman = {
+      ...pengirimanData,
+      id: `KRM-${Date.now()}`
+    };
+
+    let updatedStok = [...db.stok];
+
+    if (deductStock) {
+      pengirimanData.items.forEach((item, index) => {
+        if (item.idProduk) {
+          const prod = db.produk.find((p) => p.id === item.idProduk);
+          updatedStok.unshift({
+            id: `STK-KRM-${Date.now()}-${index}`,
+            date: new Date().toISOString(),
+            idProduk: item.idProduk,
+            tipe: 'KELUAR',
+            jumlah: item.quantity,
+            harga: prod?.harga || 0,
+            keterangan: `[PENGIRIMAN] Kepada ${pengirimanData.namaCustomer}`
+          });
+        }
+      });
+    }
+
+    saveDatabase({
+      ...db,
+      pengiriman: [newPengiriman, ...currentList],
+      stok: updatedStok
+    });
+
+    showToast(`Surat pengiriman untuk "${pengirimanData.namaCustomer}" berhasil disimpan.`);
+  };
+
+  const handleDeletePengiriman = (id: string) => {
+    const currentList = db.pengiriman || [];
+    const updated = currentList.filter((p) => p.id !== id);
+    saveDatabase({
+      ...db,
+      pengiriman: updated
+    });
+    showToast('Surat pengiriman berhasil dihapus.');
+  };
+
+  const handleUpdateStatusPengiriman = (id: string, newStatus: 'PROSES' | 'TERKIRIM' | 'BATAL') => {
+    const currentList = db.pengiriman || [];
+    const updated = currentList.map((p) =>
+      p.id === id ? { ...p, status: newStatus } : p
+    );
+    saveDatabase({
+      ...db,
+      pengiriman: updated
+    });
+    showToast(`Status pengiriman diubah menjadi ${newStatus}.`);
+  };
+
+
   // Quick Stock Helper
   const handleQuickStok = (p: Produk, tipe: TipeMutasi) => {
     setStokPreselectedProd(p);
@@ -474,6 +589,25 @@ export default function App() {
             />
           )}
 
+          {activeTab === 'customer' && (
+            <CustomerView
+              customers={db.customer || []}
+              onSaveCustomer={handleSaveCustomer}
+              onDeleteCustomer={handleDeleteCustomer}
+            />
+          )}
+
+          {activeTab === 'pengiriman' && (
+            <PengirimanView
+              pengirimanList={db.pengiriman || []}
+              customers={db.customer || []}
+              produkList={db.produk}
+              onSavePengiriman={handleSavePengiriman}
+              onDeletePengiriman={handleDeletePengiriman}
+              onUpdateStatus={handleUpdateStatusPengiriman}
+            />
+          )}
+
           {activeTab === 'laporan' && (
             <LaporanView
               db={db}
@@ -496,8 +630,10 @@ export default function App() {
         onClose={() => setIsModalProdukOpen(false)}
         onSave={handleSaveProduk}
         initialData={editingProduk}
-        existingCategories={db.produk.map((p) => p.kategori)}
+        existingCategories={[...(db.customKategori || []), ...db.produk.map((p) => p.kategori)]}
+        onDeleteCategory={handleDeleteCategory}
       />
+
 
       <ModalStok
         isOpen={isModalStokOpen}

@@ -185,5 +185,49 @@ export const INITIAL_DATABASE: AppDatabase = {
       keterangan: 'Penjualan Kasir Hari Ini',
       kategori: 'Penjualan'
     }
-  ]
+  ],
+  customer: [
+    {
+      id: 'CUST-001',
+      namaCustomer: 'Toko Berkah Utama',
+      alamat: 'Jl. Raya Denpasar No. 45, Denpasar Barat',
+      pic: 'Pak Made',
+      noTelp: '081234567890'
+    },
+    {
+      id: 'CUST-002',
+      namaCustomer: 'Warung Bu Sri',
+      alamat: 'Jl. Sunset Road No. 88, Kuta',
+      pic: 'Ibu Sri',
+      noTelp: '081987654321'
+    }
+  ],
+  pengiriman: [
+    {
+      id: 'KRM-001',
+      tanggal: new Date().toISOString().split('T')[0],
+      idCustomer: 'CUST-001',
+      namaCustomer: 'Toko Berkah Utama',
+      alamat: 'Jl. Raya Denpasar No. 45, Denpasar Barat',
+      noTelp: '081234567890',
+      items: [
+        {
+          idProduk: 'PROD-101',
+          namaProduk: 'Teh Botol Sosro 450ml',
+          quantity: 2,
+          satuan: 'Karton'
+        },
+        {
+          idProduk: 'PROD-102',
+          namaProduk: 'Indomie Goreng Original 85g',
+          quantity: 5,
+          satuan: 'Karton'
+        }
+      ],
+      catatan: 'Kirim sebelum jam 3 sore',
+      status: 'PROSES'
+    }
+  ],
+  customKategori: ['Makanan', 'Minuman', 'Rokok', 'Sembako', 'Elektronik', 'Lainnya']
 };
+

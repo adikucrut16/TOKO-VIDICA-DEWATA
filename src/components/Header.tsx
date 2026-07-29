@@ -33,6 +33,8 @@ export const Header: React.FC<HeaderProps> = ({
     produk: 'Katalog Produk Toko',
     stok: 'Mutasi & Riwayat Stok',
     keuangan: 'Buku Kas & Keuangan',
+    customer: 'Daftar Nama Customer',
+    pengiriman: 'Menu Pengiriman Barang',
     laporan: 'Laporan & Export Data'
   };
 
