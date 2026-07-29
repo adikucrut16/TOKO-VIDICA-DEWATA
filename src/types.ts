@@ -43,16 +43,20 @@ export interface ItemPengiriman {
   namaProduk: string;
   quantity: number;
   satuan: string;
+  harga: number;
 }
 
 export interface Pengiriman {
   id: string;
+  noNota?: string;
   tanggal: string;
   idCustomer?: string;
   namaCustomer: string;
   alamat?: string;
   noTelp?: string;
+  pic?: string;
   items: ItemPengiriman[];
+  totalHarga?: number;
   catatan?: string;
   status?: 'PROSES' | 'TERKIRIM' | 'BATAL';
 }

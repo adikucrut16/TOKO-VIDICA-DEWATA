@@ -205,25 +205,30 @@ export const INITIAL_DATABASE: AppDatabase = {
   pengiriman: [
     {
       id: 'KRM-001',
+      noNota: 'NOTA-2026-001',
       tanggal: new Date().toISOString().split('T')[0],
       idCustomer: 'CUST-001',
       namaCustomer: 'Toko Berkah Utama',
       alamat: 'Jl. Raya Denpasar No. 45, Denpasar Barat',
       noTelp: '081234567890',
+      pic: 'Pak Made',
       items: [
         {
           idProduk: 'PROD-101',
           namaProduk: 'Teh Botol Sosro 450ml',
           quantity: 2,
-          satuan: 'Karton'
+          satuan: 'Karton',
+          harga: 145000
         },
         {
           idProduk: 'PROD-102',
           namaProduk: 'Indomie Goreng Original 85g',
           quantity: 5,
-          satuan: 'Karton'
+          satuan: 'Karton',
+          harga: 112000
         }
       ],
+      totalHarga: 850000,
       catatan: 'Kirim sebelum jam 3 sore',
       status: 'PROSES'
     }

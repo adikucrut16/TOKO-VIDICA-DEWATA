@@ -429,7 +429,7 @@ export default function App() {
   const handleSavePengiriman = (
     pengirimanData: Omit<Pengiriman, 'id'> & { id?: string },
     deductStock: boolean = true
-  ) => {
+  ): Pengiriman => {
     const currentList = db.pengiriman || [];
     const newPengiriman: Pengiriman = {
       ...pengirimanData,
@@ -448,8 +448,8 @@ export default function App() {
             idProduk: item.idProduk,
             tipe: 'KELUAR',
             jumlah: item.quantity,
-            harga: prod?.harga || 0,
-            keterangan: `[PENGIRIMAN] Kepada ${pengirimanData.namaCustomer}`
+            harga: item.harga || prod?.harga || 0,
+            keterangan: `[PENGIRIMAN] Kepada ${pengirimanData.namaCustomer} (${pengirimanData.noNota || 'Nota Baru'})`
           });
         }
       });
@@ -461,7 +461,8 @@ export default function App() {
       stok: updatedStok
     });
 
-    showToast(`Surat pengiriman untuk "${pengirimanData.namaCustomer}" berhasil disimpan.`);
+    showToast(`Nota pengiriman untuk "${pengirimanData.namaCustomer}" berhasil dibuat.`);
+    return newPengiriman;
   };
 
   const handleDeletePengiriman = (id: string) => {
