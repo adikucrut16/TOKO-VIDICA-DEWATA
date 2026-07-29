@@ -29,6 +29,7 @@ export const ModalStok: React.FC<ModalStokProps> = ({
   const [selectedProdId, setSelectedProdId] = useState('');
   const [jumlah, setJumlah] = useState<number | ''>('');
   const [harga, setHarga] = useState<number | ''>('');
+  const [jenisMasuk, setJenisMasuk] = useState<'PEMBELIAN' | 'STOK_AWAL'>('PEMBELIAN');
   const [keterangan, setKeterangan] = useState('');
   const [autoRecordCash, setAutoRecordCash] = useState(true);
 
@@ -43,8 +44,20 @@ export const ModalStok: React.FC<ModalStokProps> = ({
       setHarga(produkList[0].harga);
     }
     setJumlah('');
+    setJenisMasuk('PEMBELIAN');
     setKeterangan('');
+    setAutoRecordCash(true);
   }, [isOpen, preselectedProduct, produkList]);
+
+  // Handle change of Jenis Masuk
+  const handleJenisMasukChange = (val: 'PEMBELIAN' | 'STOK_AWAL') => {
+    setJenisMasuk(val);
+    if (val === 'PEMBELIAN') {
+      setAutoRecordCash(true);
+    } else {
+      setAutoRecordCash(false);
+    }
+  };
 
   // Update default price on product change
   const handleProductChange = (id: string) => {
@@ -65,13 +78,21 @@ export const ModalStok: React.FC<ModalStokProps> = ({
     e.preventDefault();
     if (!selectedProdId || numJumlah <= 0) return;
 
+    let finalKeterangan = keterangan.trim();
+    if (isMasuk) {
+      const labelJenis = jenisMasuk === 'PEMBELIAN' ? 'Pembelian Barang' : 'Stok Awal';
+      finalKeterangan = finalKeterangan ? `[${labelJenis}] ${finalKeterangan}` : labelJenis;
+    } else {
+      finalKeterangan = finalKeterangan || 'Penjualan Barang';
+    }
+
     onSave({
       idProduk: selectedProdId,
       tipe,
       jumlah: numJumlah,
       harga: numHarga,
-      keterangan: keterangan.trim() || `${tipe === 'MASUK' ? 'Restock' : 'Penjualan'} Barang`,
-      autoRecordCash
+      keterangan: finalKeterangan,
+      autoRecordCash: isMasuk ? (jenisMasuk === 'PEMBELIAN') : autoRecordCash
     });
     onClose();
   };
@@ -186,32 +207,72 @@ export const ModalStok: React.FC<ModalStokProps> = ({
             </span>
           </div>
 
+          {/* Keterangan / Jenis Barang Masuk */}
+          {isMasuk && (
+            <div>
+              <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">
+                Keterangan / Jenis Restock *
+              </label>
+              <select
+                value={jenisMasuk}
+                onChange={(e) => handleJenisMasukChange(e.target.value as 'PEMBELIAN' | 'STOK_AWAL')}
+                className="input-futuristic text-sm cursor-pointer font-semibold text-slate-800"
+              >
+                <option value="PEMBELIAN" className="bg-white text-slate-800 font-medium">
+                  Pembelian Barang (Tercatat di Pembukuan Kas)
+                </option>
+                <option value="STOK_AWAL" className="bg-white text-slate-800 font-medium">
+                  Stok Awal (TIDAK Tercatat di Pembukuan Kas)
+                </option>
+              </select>
+            </div>
+          )}
+
           <div>
             <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">
-              Keterangan / Catatan
+              Catatan Tambahan (Opsional)
             </label>
             <input
               type="text"
               value={keterangan}
               onChange={(e) => setKeterangan(e.target.value)}
-              placeholder={isMasuk ? 'Cth: Restock dari Distributor A' : 'Cth: Penjualan Grosir'}
+              placeholder={isMasuk ? 'Cth: Restock dari Distributor A / Inv #123' : 'Cth: Penjualan Grosir'}
               className="input-futuristic text-sm"
             />
           </div>
 
-          {/* Auto Record Checkbox */}
-          <label className="flex items-center gap-2 cursor-pointer pt-1">
-            <input
-              type="checkbox"
-              checked={autoRecordCash}
-              onChange={(e) => setAutoRecordCash(e.target.checked)}
-              className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 bg-white cursor-pointer"
-            />
-            <span className="text-xs font-medium text-slate-700">
-              Sinkronkan otomatis ke Buku Kas (
-              {isMasuk ? 'Pengeluaran Uang' : 'Pemasukan Uang'})
-            </span>
-          </label>
+          {/* Bookkeeping Notice / Checkbox */}
+          {isMasuk ? (
+            <div className={`p-3 rounded-xl border text-xs font-medium transition-all ${
+              jenisMasuk === 'PEMBELIAN' 
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
+                : 'bg-amber-50 border-amber-200 text-amber-800'
+            }`}>
+              {jenisMasuk === 'PEMBELIAN' ? (
+                <p className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Pilihan <strong>Pembelian Barang</strong> akan otomatis dicatat ke <strong>Pembukuan Kas (Pengeluaran)</strong>.</span>
+                </p>
+              ) : (
+                <p className="flex items-center gap-2">
+                  <span className="font-bold text-amber-600 shrink-0 text-sm">ℹ</span>
+                  <span>Pilihan <strong>Stok Awal</strong> <u>TIDAK dicatat</u> ke Pembukuan Kas (Hanya menambah jumlah stok barang).</span>
+                </p>
+              )}
+            </div>
+          ) : (
+            <label className="flex items-center gap-2 cursor-pointer pt-1">
+              <input
+                type="checkbox"
+                checked={autoRecordCash}
+                onChange={(e) => setAutoRecordCash(e.target.checked)}
+                className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 bg-white cursor-pointer"
+              />
+              <span className="text-xs font-medium text-slate-700">
+                Sinkronkan otomatis ke Buku Kas (Pemasukan Uang)
+              </span>
+            </label>
+          )}
 
           <div className="mt-6 pt-3 flex justify-end gap-3 border-t border-slate-100">
             <button
