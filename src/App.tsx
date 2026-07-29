@@ -712,7 +712,7 @@ export default function App() {
         onClose={() => setIsModalProdukOpen(false)}
         onSave={handleSaveProduk}
         initialData={editingProduk}
-        existingCategories={[...(db.customKategori || []), ...db.produk.map((p) => p.kategori)]}
+        existingCategories={[...(db.customKategori || []), ...db.produk.map((p) => p.kategori)].filter(c => c && !['makanan', 'minuman', 'rokok', 'sembako'].includes(c.toLowerCase()))}
         onDeleteCategory={handleDeleteCategory}
       />
 

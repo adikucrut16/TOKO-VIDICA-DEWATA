@@ -11,7 +11,7 @@ interface ModalProdukProps {
   onDeleteCategory?: (categoryName: string) => void;
 }
 
-const DEFAULT_CATEGORIES = ['Makanan', 'Minuman', 'Rokok', 'Sembako', 'Elektronik', 'Lainnya'];
+const DEFAULT_CATEGORIES = ['HANDTOWEL', 'ROLL', 'NAPKIN', 'FACIAL TISSUE', 'KITCHEN TOWEL'];
 
 export const ModalProduk: React.FC<ModalProdukProps> = ({
   isOpen,
@@ -24,7 +24,7 @@ export const ModalProduk: React.FC<ModalProdukProps> = ({
 
   const [sku, setSku] = useState('');
   const [nama, setNama] = useState('');
-  const [kategoriSelect, setKategoriSelect] = useState('Makanan');
+  const [kategoriSelect, setKategoriSelect] = useState('HANDTOWEL');
   const [customKategori, setCustomKategori] = useState('');
   const [isCustomMode, setIsCustomMode] = useState(false);
   const [harga, setHarga] = useState<number | ''>('');
@@ -33,8 +33,10 @@ export const ModalProduk: React.FC<ModalProdukProps> = ({
   const [minStok, setMinStok] = useState<number | ''>(5);
 
   // Combine default categories and existing categories from db
+  const excludedCategories = ['makanan', 'minuman', 'rokok', 'sembako'];
   const allCategories = useMemo(() => {
-    const combined = new Set([...DEFAULT_CATEGORIES, ...existingCategories.filter(Boolean)]);
+    const filteredExisting = existingCategories.filter(c => c && !excludedCategories.includes(c.toLowerCase()));
+    const combined = new Set([...DEFAULT_CATEGORIES, ...filteredExisting]);
     if (initialData?.kategori) {
       combined.add(initialData.kategori);
     }
@@ -53,7 +55,7 @@ export const ModalProduk: React.FC<ModalProdukProps> = ({
       } else {
         setIsCustomMode(true);
         setCustomKategori(initialData.kategori);
-        setKategoriSelect('Makanan');
+        setKategoriSelect('HANDTOWEL');
       }
 
       setHarga(initialData.harga);
@@ -63,7 +65,7 @@ export const ModalProduk: React.FC<ModalProdukProps> = ({
     } else {
       setSku(`BRG-${Math.floor(100 + Math.random() * 900)}`);
       setNama('');
-      setKategoriSelect('Makanan');
+      setKategoriSelect('HANDTOWEL');
       setCustomKategori('');
       setIsCustomMode(false);
       setHarga('');
@@ -80,7 +82,7 @@ export const ModalProduk: React.FC<ModalProdukProps> = ({
       if (onDeleteCategory) {
         onDeleteCategory(catToDelete);
       }
-      setKategoriSelect('Makanan');
+      setKategoriSelect('HANDTOWEL');
       setIsCustomMode(false);
       setCustomKategori('');
     }
@@ -93,7 +95,7 @@ export const ModalProduk: React.FC<ModalProdukProps> = ({
     e.preventDefault();
     if (!nama.trim() || !sku.trim()) return;
 
-    let finalKategori = 'Makanan';
+    let finalKategori = 'HANDTOWEL';
     if (isCustomMode) {
       finalKategori = customKategori.trim() || 'Lainnya';
     } else {
