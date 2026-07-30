@@ -1,8 +1,16 @@
-import { AppDatabase } from '../types';
+import { AppDatabase, Produk, MutasiStok, TransaksiKeuangan, Customer, Pengiriman, ItemPengiriman } from '../types';
 
 export const TARGET_SPREADSHEET_ID = '1nCS_IWOeTlxxaUHKG3n6GnfHQrv7hXrzO6ErK72qMBY';
 export const TARGET_SPREADSHEET_URL = `https://docs.google.com/spreadsheets/d/${TARGET_SPREADSHEET_ID}/edit?gid=0#gid=0`;
 export const DEFAULT_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyQ3JzxhhWCpOgk0R2mvYjilDmN5-GEyUH0yXC86G_PpN-PU6WtYo05GvvWlTi438touA/exec';
+
+const parseNum = (val: any, fallback = 0): number => {
+  if (val === undefined || val === null || val === '') return fallback;
+  if (typeof val === 'number') return val;
+  const cleaned = String(val).replace(/[^0-9.-]+/g, '');
+  const parsed = parseFloat(cleaned);
+  return isNaN(parsed) ? fallback : parsed;
+};
 
 export async function syncToWebApp(db: AppDatabase, webAppUrl = DEFAULT_WEB_APP_URL): Promise<{ success: boolean; message: string }> {
   try {
@@ -267,6 +275,179 @@ export async function syncDatabaseDirectToSheets(
     return {
       success: false,
       message: err.message || 'Gagal menyinkronkan data ke Google Sheets.'
+    };
+  }
+}
+
+export async function fetchDatabaseFromSheets(
+  accessToken: string,
+  spreadsheetId = TARGET_SPREADSHEET_ID
+): Promise<{ success: boolean; data?: AppDatabase; message?: string }> {
+  try {
+    const cleanId = extractSpreadsheetId(spreadsheetId);
+
+    const ranges = [
+      "'Katalog Produk'!A2:H1000",
+      "'Mutasi Stok'!A2:I1000",
+      "'Buku Kas Keuangan'!A2:G1000",
+      "'Daftar Customer'!A2:E1000",
+      "'Data Pengiriman'!A2:H1000"
+    ];
+
+    const rangeParams = ranges.map((r) => `ranges=${encodeURIComponent(r)}`).join('&');
+    const res = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${cleanId}/values:batchGet?${rangeParams}`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (!res.ok) {
+      if (res.status === 401) {
+        throw new Error('Sesi login Google telah kadaluarsa. Silakan login kembali.');
+      }
+      if (res.status === 403) {
+        throw new Error('Izin ditolak. Pastikan akun Google Anda memiliki akses ke spreadsheet ini.');
+      }
+      if (res.status === 404) {
+        throw new Error('Spreadsheet tidak ditemukan. Periksa ID atau URL spreadsheet.');
+      }
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson.error?.message || `Gagal mengakses Google Sheets (Status ${res.status}).`);
+    }
+
+    const json = await res.json();
+    const valueRanges = json.valueRanges || [];
+
+    const produkRows: any[][] = valueRanges[0]?.values || [];
+    const stokRows: any[][] = valueRanges[1]?.values || [];
+    const keuanganRows: any[][] = valueRanges[2]?.values || [];
+    const customerRows: any[][] = valueRanges[3]?.values || [];
+    const pengirimanRows: any[][] = valueRanges[4]?.values || [];
+
+    // 1. Parse Produk
+    const produk: Produk[] = produkRows.map((r, idx) => ({
+      id: String(r[0] || `BRG-${idx + 1}`),
+      sku: String(r[1] || ''),
+      nama: String(r[2] || ''),
+      kategori: String(r[3] || 'HANDTOWEL'),
+      harga: parseNum(r[4], 0),
+      satuan: String(r[5] || 'Pcs'),
+      isiKarton: r[6] !== undefined ? r[6] : 1,
+      minStok: parseNum(r[7], 5)
+    }));
+
+    // 2. Parse Mutasi Stok
+    const stok: MutasiStok[] = stokRows.map((r, idx) => ({
+      id: String(r[0] || `MUT-${idx + 1}`),
+      date: String(r[1] || new Date().toISOString()),
+      idProduk: String(r[2] || ''),
+      tipe: r[4] === 'KELUAR' ? 'KELUAR' : 'MASUK',
+      jumlah: parseNum(r[5], 0),
+      harga: parseNum(r[6], 0),
+      keterangan: String(r[8] || r[7] || '')
+    }));
+
+    // 3. Parse Keuangan
+    const keuangan: TransaksiKeuangan[] = keuanganRows.map((r, idx) => {
+      const tipe = r[2] === 'KELUAR' ? 'KELUAR' : 'MASUK';
+      const debit = parseNum(r[5], 0);
+      const kredit = parseNum(r[6], 0);
+      const nominal = tipe === 'MASUK' ? (debit || parseNum(r[4], 0)) : (kredit || parseNum(r[4], 0));
+
+      return {
+        id: String(r[0] || `KAS-${idx + 1}`),
+        date: String(r[1] || new Date().toISOString()),
+        tipe,
+        kategori: String(r[3] || 'Umum'),
+        keterangan: String(r[4] || ''),
+        nominal
+      };
+    });
+
+    // 4. Parse Customer
+    const customer: Customer[] = customerRows.map((r, idx) => ({
+      id: String(r[0] || `CUST-${idx + 1}`),
+      namaCustomer: String(r[1] || ''),
+      alamat: String(r[2] || ''),
+      pic: String(r[3] || ''),
+      noTelp: String(r[4] || '')
+    }));
+
+    // 5. Parse Pengiriman
+    const pengiriman: Pengiriman[] = pengirimanRows.map((r, idx) => {
+      const itemStr = String(r[4] || '');
+      const items: ItemPengiriman[] = itemStr
+        .split(';')
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .map((itemPiece) => {
+          const match = itemPiece.match(/^(.*?)\s*\((?:(\d+)\s*)?(.*?)\)$/);
+          if (match) {
+            return {
+              idProduk: '',
+              namaProduk: match[1]?.trim() || itemPiece,
+              quantity: parseInt(match[2] || '1', 10) || 1,
+              satuan: match[3]?.trim() || 'Pcs',
+              harga: 0
+            };
+          }
+          return {
+            idProduk: '',
+            namaProduk: itemPiece,
+            quantity: 1,
+            satuan: 'Pcs',
+            harga: 0
+          };
+        });
+
+      let statusVal: 'PROSES' | 'TERKIRIM' | 'BATAL' = 'PROSES';
+      if (r[6] === 'TERKIRIM' || r[6] === 'SELESAI' || r[6] === 'KIRIM') statusVal = 'TERKIRIM';
+      if (r[6] === 'BATAL') statusVal = 'BATAL';
+
+      return {
+        id: String(r[0] || `PENG-${idx + 1}`),
+        noNota: String(r[1] || ''),
+        tanggal: String(r[2] || new Date().toISOString()),
+        namaCustomer: String(r[3] || ''),
+        items,
+        totalHarga: parseNum(r[5], 0),
+        status: statusVal,
+        catatan: String(r[7] || '')
+      };
+    });
+
+    const excludedCategories = ['makanan', 'minuman', 'rokok', 'sembako'];
+    const customKategori = Array.from(
+      new Set(
+        produk
+          .map((p) => p.kategori)
+          .filter((cat) => cat && !excludedCategories.includes(cat.toLowerCase()))
+      )
+    );
+
+    const parsedDb: AppDatabase = {
+      produk,
+      stok,
+      keuangan,
+      customer,
+      pengiriman,
+      customKategori
+    };
+
+    return {
+      success: true,
+      data: parsedDb,
+      message: 'Berhasil menarik data dari Google Spreadsheet!'
+    };
+  } catch (err: any) {
+    console.error('fetchDatabaseFromSheets error:', err);
+    return {
+      success: false,
+      message: err.message || 'Gagal mengambil data dari Google Spreadsheet.'
     };
   }
 }

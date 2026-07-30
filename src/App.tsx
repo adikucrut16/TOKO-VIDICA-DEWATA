@@ -31,6 +31,7 @@ import { fetchCloudDatabase, saveCloudDatabase, subscribeCloudDatabase } from '.
 import { 
   syncDatabaseDirectToSheets, 
   syncToWebApp, 
+  fetchDatabaseFromSheets,
   TARGET_SPREADSHEET_ID, 
   TARGET_SPREADSHEET_URL, 
   DEFAULT_WEB_APP_URL 
@@ -271,31 +272,59 @@ export default function App() {
   };
 
   const handleRefreshData = async () => {
-    showToast('Memuat ulang data terbaru...');
-    const cloudDb = await fetchCloudDatabase();
-    if (cloudDb && Array.isArray(cloudDb.produk)) {
-      setDb(cloudDb);
+    let activeToken = accessToken || getAccessToken();
+
+    if (!activeToken) {
+      const wantLogin = window.confirm(
+        'Untuk menarik data terbaru langsung dari Google Spreadsheet (1nCS_IWOeTlxxaUHKG3n6GnfHQrv7hXrzO6ErK72qMBY), Anda perlu Login Akun Google terlebih dahulu.\n\nApakah Anda ingin Login Google sekarang?'
+      );
+      if (!wantLogin) return;
+
       try {
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(cloudDb));
-      } catch (e) {
-        // ignore
+        const res = await googleSignIn();
+        setUser(res.user);
+        setAccessToken(res.accessToken);
+        updateStoredToken(res.accessToken);
+        setIsGuestMode(false);
+        activeToken = res.accessToken;
+        showToast(`Login Google berhasil! Terhubung sebagai ${res.user.email}`);
+      } catch (err: any) {
+        console.error('Google Sign In error:', err);
+        showToast('Otorisasi Google dibatalkan atau gagal: ' + (err.message || ''));
+        return;
       }
-      showToast('Data berhasil diperbarui dari Cloud / Server!');
-    } else {
-      try {
-        const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (parsed && Array.isArray(parsed.produk)) {
-            setDb(parsed);
-            showToast('Data dimuat ulang dari penyimpanan lokal.');
-            return;
-          }
+    }
+
+    showToast('Menarik data terbaru dari Google Spreadsheet...');
+    setIsSyncing(true);
+
+    try {
+      const spreadsheetId = sheetsConfig.spreadsheetUrl || TARGET_SPREADSHEET_ID;
+      const res = await fetchDatabaseFromSheets(activeToken, spreadsheetId);
+
+      if (res.success && res.data) {
+        setDb(res.data);
+        try {
+          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(res.data));
+        } catch (e) {
+          // ignore
         }
-      } catch (e) {
-        // ignore
+        saveCloudDatabase(res.data);
+        showToast('BERHASIL! Data telah ditarik dan diperbarui dari Google Spreadsheet!');
+      } else {
+        if (res.message?.includes('kadaluarsa')) {
+          updateStoredToken(null);
+          setAccessToken(null);
+          showToast('Sesi Google kadaluarsa. Silakan Login Google kembali.');
+        } else {
+          showToast(`Gagal menarik data dari Google Spreadsheet: ${res.message}`);
+        }
       }
-      showToast('Gagal memuat ulang data atau perangkat offline.');
+    } catch (err: any) {
+      console.error('Refresh error:', err);
+      showToast('Gagal menarik data dari Google Spreadsheet: ' + (err.message || ''));
+    } finally {
+      setIsSyncing(false);
     }
   };
 
