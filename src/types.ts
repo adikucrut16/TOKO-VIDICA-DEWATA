@@ -48,6 +48,27 @@ export interface ItemPengiriman {
   harga: number;
 }
 
+export interface ItemPO {
+  idProduk: string;
+  namaProduk: string;
+  quantity: number;
+  satuan: string;
+  harga: number;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  noPO?: string;
+  tanggal: string;
+  namaSupplier: string;
+  noTelpSupplier?: string;
+  alamatSupplier?: string;
+  items: ItemPO[];
+  totalHarga?: number;
+  catatan?: string;
+  status?: 'DRAFT' | 'DIPESAN' | 'DITERIMA' | 'BATAL';
+}
+
 export interface Pengiriman {
   id: string;
   noNota?: string;
@@ -69,10 +90,11 @@ export interface AppDatabase {
   keuangan: TransaksiKeuangan[];
   customer?: Customer[];
   pengiriman?: Pengiriman[];
+  purchaseOrder?: PurchaseOrder[];
   customKategori?: string[];
 }
 
-export type ViewTab = 'dashboard' | 'produk' | 'stok' | 'keuangan' | 'customer' | 'pengiriman' | 'laporan';
+export type ViewTab = 'dashboard' | 'produk' | 'stok' | 'keuangan' | 'customer' | 'pengiriman' | 'purchase_order' | 'laporan';
 
 export interface GoogleSheetsConfig {
   webAppUrl: string;

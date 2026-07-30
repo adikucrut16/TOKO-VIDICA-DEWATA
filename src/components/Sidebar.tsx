@@ -13,7 +13,8 @@ import {
   LogOut,
   UserCheck,
   Users,
-  Truck
+  Truck,
+  ShoppingCart
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -42,6 +43,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'keuangan', label: 'Kas & Keuangan', icon: <Wallet className="w-5 h-5" /> },
     { id: 'customer', label: 'Daftar Customer', icon: <Users className="w-5 h-5" /> },
     { id: 'pengiriman', label: 'Nota & Pengiriman', icon: <Truck className="w-5 h-5" /> },
+    { id: 'purchase_order', label: 'Purchase Order (PO)', icon: <ShoppingCart className="w-5 h-5" /> },
     { id: 'laporan', label: 'Laporan & Export', icon: <FileText className="w-5 h-5" /> },
   ];
 

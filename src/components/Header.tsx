@@ -35,6 +35,7 @@ export const Header: React.FC<HeaderProps> = ({
     keuangan: 'Buku Kas & Keuangan',
     customer: 'Daftar Nama Customer',
     pengiriman: 'Nota & Pengiriman Barang',
+    purchase_order: 'Purchase Order (PO) Supplier',
     laporan: 'Laporan & Export Data'
   };
 

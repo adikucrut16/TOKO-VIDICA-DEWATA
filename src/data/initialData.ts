@@ -233,6 +233,35 @@ export const INITIAL_DATABASE: AppDatabase = {
       status: 'PROSES'
     }
   ],
+  purchaseOrder: [
+    {
+      id: 'PO-001',
+      noPO: 'PO-0001',
+      tanggal: new Date().toISOString().split('T')[0],
+      namaSupplier: 'PT. Sumber Makmur Utama',
+      noTelpSupplier: '0812-9876-5432',
+      alamatSupplier: 'Jl. Cargo Permai No. 12, Denpasar',
+      items: [
+        {
+          idProduk: 'PROD-101',
+          namaProduk: 'Teh Botol Sosro 450ml',
+          quantity: 10,
+          satuan: 'Karton',
+          harga: 140000
+        },
+        {
+          idProduk: 'PROD-105',
+          namaProduk: 'Air Mineral Aqua 600ml',
+          quantity: 15,
+          satuan: 'Karton',
+          harga: 80000
+        }
+      ],
+      totalHarga: 2600000,
+      catatan: 'Mohon dikirim beserta faktur pajak asli.',
+      status: 'DIPESAN'
+    }
+  ],
   customKategori: ['Makanan', 'Minuman', 'Rokok', 'Sembako', 'Elektronik', 'Lainnya']
 };
 

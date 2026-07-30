@@ -8,6 +8,7 @@ import {
   GoogleSheetsConfig,
   Customer,
   Pengiriman,
+  PurchaseOrder,
   TransaksiKeuangan 
 } from './types';
 import { INITIAL_DATABASE } from './data/initialData';
@@ -19,6 +20,7 @@ import { StokView } from './components/StokView';
 import { KeuanganView } from './components/KeuanganView';
 import { CustomerView } from './components/CustomerView';
 import { PengirimanView } from './components/PengirimanView';
+import { PurchaseOrderView } from './components/PurchaseOrderView';
 import { LaporanView } from './components/LaporanView';
 import { ModalProduk } from './components/ModalProduk';
 
@@ -136,6 +138,33 @@ export default function App() {
       if (typeof unsubscribe === 'function') unsubscribe();
     };
   }, []);
+
+  // Auto Refresh data dari Google Spreadsheet saat awal masuk ke aplikasi
+  useEffect(() => {
+    const autoRefreshFromSheets = async () => {
+      const activeToken = accessToken || getAccessToken();
+      if (!activeToken) return;
+
+      try {
+        const spreadsheetId = sheetsConfig.spreadsheetUrl || TARGET_SPREADSHEET_ID;
+        const res = await fetchDatabaseFromSheets(activeToken, spreadsheetId);
+        if (res.success && res.data) {
+          setDb(res.data);
+          try {
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(res.data));
+          } catch (e) {
+            console.error('Failed to update local storage:', e);
+          }
+          saveCloudDatabase(res.data);
+          showToast('Data otomatis diperbarui dari Google Spreadsheet!');
+        }
+      } catch (err) {
+        console.error('Auto refresh spreadsheet error:', err);
+      }
+    };
+
+    autoRefreshFromSheets();
+  }, [accessToken, sheetsConfig.spreadsheetUrl]);
 
   // Show Toast Message helper
   const showToast = (msg: string) => {
@@ -597,6 +626,68 @@ export default function App() {
     showToast(`Status pengiriman diubah menjadi ${newStatus}.`);
   };
 
+  // --- CRUD: PURCHASE ORDER ---
+  const handleSavePurchaseOrder = (
+    poData: Omit<PurchaseOrder, 'id'> & { id?: string },
+    recordStock: boolean = false
+  ): PurchaseOrder => {
+    const currentList = db.purchaseOrder || [];
+    const newPO: PurchaseOrder = {
+      ...poData,
+      id: `PO-${Date.now()}`
+    };
+
+    let updatedStok = [...db.stok];
+
+    if (recordStock) {
+      poData.items.forEach((item, index) => {
+        if (item.idProduk) {
+          const prod = db.produk.find((p) => p.id === item.idProduk);
+          updatedStok.unshift({
+            id: `STK-PO-${Date.now()}-${index}`,
+            date: new Date().toISOString(),
+            idProduk: item.idProduk,
+            tipe: 'MASUK',
+            jumlah: item.quantity,
+            harga: item.harga || prod?.harga || 0,
+            keterangan: `[PO SUPPLIER] Dari ${poData.namaSupplier} (${poData.noPO || 'PO Baru'})`
+          });
+        }
+      });
+    }
+
+    saveDatabase({
+      ...db,
+      purchaseOrder: [newPO, ...currentList],
+      stok: updatedStok
+    });
+
+    showToast(`Purchase Order "${poData.noPO || 'PO'}" untuk supplier "${poData.namaSupplier}" berhasil disimpan.`);
+    return newPO;
+  };
+
+  const handleDeletePurchaseOrder = (id: string) => {
+    const currentList = db.purchaseOrder || [];
+    const updated = currentList.filter((p) => p.id !== id);
+    saveDatabase({
+      ...db,
+      purchaseOrder: updated
+    });
+    showToast('Dokumen Purchase Order berhasil dihapus.');
+  };
+
+  const handleUpdateStatusPO = (id: string, newStatus: 'DRAFT' | 'DIPESAN' | 'DITERIMA' | 'BATAL') => {
+    const currentList = db.purchaseOrder || [];
+    const updated = currentList.map((p) =>
+      p.id === id ? { ...p, status: newStatus } : p
+    );
+    saveDatabase({
+      ...db,
+      purchaseOrder: updated
+    });
+    showToast(`Status Purchase Order diubah menjadi ${newStatus}.`);
+  };
+
 
   // Quick Stock Helper
   const handleQuickStok = (p: Produk, tipe: TipeMutasi) => {
@@ -729,6 +820,16 @@ export default function App() {
               onSavePengiriman={handleSavePengiriman}
               onDeletePengiriman={handleDeletePengiriman}
               onUpdateStatus={handleUpdateStatusPengiriman}
+            />
+          )}
+
+          {activeTab === 'purchase_order' && (
+            <PurchaseOrderView
+              poList={db.purchaseOrder || []}
+              produkList={db.produk}
+              onSavePO={handleSavePurchaseOrder}
+              onDeletePO={handleDeletePurchaseOrder}
+              onUpdateStatus={handleUpdateStatusPO}
             />
           )}
 

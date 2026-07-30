@@ -1,4 +1,4 @@
-import { AppDatabase, Produk, MutasiStok, TransaksiKeuangan, Customer, Pengiriman, ItemPengiriman } from '../types';
+import { AppDatabase, Produk, MutasiStok, TransaksiKeuangan, Customer, Pengiriman, ItemPengiriman, PurchaseOrder, ItemPO } from '../types';
 
 export const TARGET_SPREADSHEET_ID = '1nCS_IWOeTlxxaUHKG3n6GnfHQrv7hXrzO6ErK72qMBY';
 export const TARGET_SPREADSHEET_URL = `https://docs.google.com/spreadsheets/d/${TARGET_SPREADSHEET_ID}/edit?gid=0#gid=0`;
@@ -101,6 +101,7 @@ export async function syncDatabaseDirectToSheets(
       'Buku Kas Keuangan',
       'Daftar Customer',
       'Data Pengiriman',
+      'Purchase Order',
       'Ringkasan Dashboard'
     ];
 
@@ -216,6 +217,20 @@ export async function syncDatabaseDirectToSheets(
       ])
     ];
 
+    // Purchase Order
+    const rowsPO = [
+      ['ID PO', 'No PO', 'Tanggal', 'Nama Supplier', 'Item & Qty', 'Status', 'Catatan'],
+      ...(db.purchaseOrder || []).map((p) => [
+        p.id,
+        p.noPO || '-',
+        formatDate(p.tanggal),
+        p.namaSupplier,
+        (p.items || []).map((i) => `${i.namaProduk} (${i.quantity} ${i.satuan})`).join('; '),
+        p.status || 'DIPESAN',
+        p.catatan || ''
+      ])
+    ];
+
     // Ringkasan Dashboard
     const totalPemasukan = db.keuangan
       .filter((k) => k.tipe === 'MASUK')
@@ -233,6 +248,7 @@ export async function syncDatabaseDirectToSheets(
       ['Total Transaksi Kas', db.keuangan.length],
       ['Total Pelanggan Registered', (db.customer || []).length],
       ['Total Surat Pengiriman', (db.pengiriman || []).length],
+      ['Total Purchase Order', (db.purchaseOrder || []).length],
       ['Total Akumulasi Pemasukan (Rp)', totalPemasukan],
       ['Total Akumulasi Pengeluaran (Rp)', totalPengeluaran],
       ['Saldo Bersih Kas (Rp)', saldoNet]
@@ -255,6 +271,7 @@ export async function syncDatabaseDirectToSheets(
             { range: "'Buku Kas Keuangan'!A1", values: rowsKeuangan },
             { range: "'Daftar Customer'!A1", values: rowsCustomer },
             { range: "'Data Pengiriman'!A1", values: rowsPengiriman },
+            { range: "'Purchase Order'!A1", values: rowsPO },
             { range: "'Ringkasan Dashboard'!A1", values: rowsSummary }
           ]
         })
@@ -291,7 +308,8 @@ export async function fetchDatabaseFromSheets(
       "'Mutasi Stok'!A2:I1000",
       "'Buku Kas Keuangan'!A2:G1000",
       "'Daftar Customer'!A2:E1000",
-      "'Data Pengiriman'!A2:H1000"
+      "'Data Pengiriman'!A2:H1000",
+      "'Purchase Order'!A2:H1000"
     ];
 
     const rangeParams = ranges.map((r) => `ranges=${encodeURIComponent(r)}`).join('&');
@@ -327,6 +345,7 @@ export async function fetchDatabaseFromSheets(
     const keuanganRows: any[][] = valueRanges[2]?.values || [];
     const customerRows: any[][] = valueRanges[3]?.values || [];
     const pengirimanRows: any[][] = valueRanges[4]?.values || [];
+    const poRows: any[][] = valueRanges[5]?.values || [];
 
     // 1. Parse Produk
     const produk: Produk[] = produkRows.map((r, idx) => ({
@@ -420,6 +439,51 @@ export async function fetchDatabaseFromSheets(
       };
     });
 
+    // 6. Parse Purchase Order
+    const purchaseOrder: PurchaseOrder[] = poRows.map((r, idx) => {
+      const itemStr = String(r[4] || '');
+      const items: ItemPO[] = itemStr
+        .split(';')
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .map((itemPiece) => {
+          const match = itemPiece.match(/^(.*?)\s*\((?:(\d+)\s*)?(.*?)\)$/);
+          if (match) {
+            return {
+              idProduk: '',
+              namaProduk: match[1]?.trim() || itemPiece,
+              quantity: parseInt(match[2] || '1', 10) || 1,
+              satuan: match[3]?.trim() || 'Pcs',
+              harga: 0
+            };
+          }
+          return {
+            idProduk: '',
+            namaProduk: itemPiece,
+            quantity: 1,
+            satuan: 'Pcs',
+            harga: 0
+          };
+        });
+
+      let statusVal: 'DRAFT' | 'DIPESAN' | 'DITERIMA' | 'BATAL' = 'DIPESAN';
+      const rawStatus = String(r[5] || r[6] || '').toUpperCase();
+      if (rawStatus === 'DITERIMA' || rawStatus === 'SELESAI') statusVal = 'DITERIMA';
+      if (rawStatus === 'BATAL') statusVal = 'BATAL';
+      if (rawStatus === 'DRAFT') statusVal = 'DRAFT';
+
+      return {
+        id: String(r[0] || `PO-${idx + 1}`),
+        noPO: String(r[1] || ''),
+        tanggal: String(r[2] || new Date().toISOString()),
+        namaSupplier: String(r[3] || ''),
+        items,
+        totalHarga: 0,
+        status: statusVal,
+        catatan: String(r[6] || r[7] || '')
+      };
+    });
+
     const excludedCategories = ['makanan', 'minuman', 'rokok', 'sembako'];
     const customKategori = Array.from(
       new Set(
@@ -435,6 +499,7 @@ export async function fetchDatabaseFromSheets(
       keuangan,
       customer,
       pengiriman,
+      purchaseOrder,
       customKategori
     };
 
