@@ -168,54 +168,65 @@ export default function App() {
 
   // Google Sheets Synchronization (Direct API + Apps Script Web App Endpoint)
   const syncToSheets = async (targetDb = db) => {
-    const confirmed = window.confirm(
-      'Apakah Anda ingin menyinkronkan dan memperbarui data di Google Spreadsheet?'
-    );
-    if (!confirmed) return;
+    let currentToken = accessToken;
+
+    if (!currentToken) {
+      const wantLogin = window.confirm(
+        'Untuk menyinkronkan data langsung ke Google Spreadsheet (1nCS_IWOeTlxxaUHKG3n6GnfHQrv7hXrzO6ErK72qMBY), Anda perlu Otorisasi / Login Akun Google terlebih dahulu.\n\nApakah Anda ingin Login Google sekarang?'
+      );
+      if (!wantLogin) return;
+
+      try {
+        const res = await googleSignIn();
+        setUser(res.user);
+        setAccessToken(res.accessToken);
+        updateStoredToken(res.accessToken);
+        setIsGuestMode(false);
+        currentToken = res.accessToken;
+        showToast(`Login Google berhasil! Terhubung sebagai ${res.user.email}`);
+      } catch (err: any) {
+        console.error('Google Sign In error:', err);
+        showToast('Otorisasi Google dibatalkan atau gagal: ' + (err.message || ''));
+        return;
+      }
+    }
 
     setIsSyncing(true);
-    let successCount = 0;
-    let messages: string[] = [];
+    const targetSpreadsheet = sheetsConfig.spreadsheetUrl || TARGET_SPREADSHEET_URL;
 
-    // 1. Sync via Apps Script Web App endpoint if available
-    const targetWebAppUrl = sheetsConfig.webAppUrl || DEFAULT_WEB_APP_URL;
-    if (targetWebAppUrl) {
-      const webAppRes = await syncToWebApp(targetDb, targetWebAppUrl);
-      if (webAppRes.success) {
-        successCount++;
-        messages.push('Kirim ke Apps Script berhasil');
-      }
-    }
-
-    // 2. Sync via Direct Google Sheets API if logged in
-    if (accessToken) {
+    try {
       const directRes = await syncDatabaseDirectToSheets(
         targetDb,
-        accessToken,
-        sheetsConfig.spreadsheetUrl || TARGET_SPREADSHEET_ID
+        currentToken,
+        targetSpreadsheet
       );
+
       if (directRes.success) {
-        successCount++;
-        messages.push('Direct Sheets API berhasil');
-      } else if (directRes.message?.includes('kadaluarsa')) {
-        updateStoredToken(null);
-        setAccessToken(null);
-        messages.push('Sesi Google Kadaluarsa (Silakan Login Kembali)');
+        const nowStr = new Date().toISOString();
+        setSheetsConfig((prev) => {
+          const updated = { ...prev, lastSyncedAt: nowStr };
+          localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(updated));
+          return updated;
+        });
+        showToast('BERHASIL! Data telah direkap ke Google Spreadsheet (1nCS_IWOeTlxxaUHKG3n6GnfHQrv7hXrzO6ErK72qMBY).');
+      } else {
+        if (directRes.message?.includes('kadaluarsa')) {
+          updateStoredToken(null);
+          setAccessToken(null);
+          showToast('Sesi Google kadaluarsa. Silakan Login Google kembali.');
+        } else {
+          showToast(`Gagal Rekap: ${directRes.message}`);
+        }
       }
-    }
 
-    setIsSyncing(false);
-
-    if (successCount > 0) {
-      const nowStr = new Date().toISOString();
-      setSheetsConfig((prev) => {
-        const updated = { ...prev, lastSyncedAt: nowStr };
-        localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(updated));
-        return updated;
-      });
-      showToast(`Rekap ke Google Sheets Berhasil! (${messages.join(', ')})`);
-    } else {
-      showToast('Gagal merekap ke Google Sheets. Silakan login kembali dengan Google atau periksa koneksi.');
+      if (sheetsConfig.webAppUrl) {
+        syncToWebApp(targetDb, sheetsConfig.webAppUrl);
+      }
+    } catch (err: any) {
+      console.error('Sync error:', err);
+      showToast(`Gagal menyinkronkan data: ${err.message || 'Terjadi kesalahan'}`);
+    } finally {
+      setIsSyncing(false);
     }
   };
 
