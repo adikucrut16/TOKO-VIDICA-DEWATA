@@ -91,6 +91,8 @@ export async function syncDatabaseDirectToSheets(
       'Katalog Produk',
       'Mutasi Stok',
       'Buku Kas Keuangan',
+      'Daftar Customer',
+      'Data Pengiriman',
       'Ringkasan Dashboard'
     ];
 
@@ -179,6 +181,33 @@ export async function syncDatabaseDirectToSheets(
       ])
     ];
 
+    // Daftar Customer
+    const rowsCustomer = [
+      ['ID Customer', 'Nama Customer', 'Alamat', 'PIC / Kontak', 'No. Telepon'],
+      ...(db.customer || []).map((c) => [
+        c.id,
+        c.namaCustomer,
+        c.alamat,
+        c.pic,
+        c.noTelp
+      ])
+    ];
+
+    // Data Pengiriman
+    const rowsPengiriman = [
+      ['ID Pengiriman', 'No Nota', 'Tanggal', 'Nama Customer', 'Item & Qty', 'Total Nilai (Rp)', 'Status', 'Catatan'],
+      ...(db.pengiriman || []).map((p) => [
+        p.id,
+        p.noNota || '-',
+        formatDate(p.tanggal),
+        p.namaCustomer,
+        (p.items || []).map((i) => `${i.namaProduk} (${i.quantity} ${i.satuan})`).join('; '),
+        p.totalHarga || (p.items || []).reduce((acc, i) => acc + (i.harga * i.quantity), 0),
+        p.status || 'PROSES',
+        p.catatan || ''
+      ])
+    ];
+
     // Ringkasan Dashboard
     const totalPemasukan = db.keuangan
       .filter((k) => k.tipe === 'MASUK')
@@ -194,12 +223,14 @@ export async function syncDatabaseDirectToSheets(
       ['Total Jenis Produk', db.produk.length],
       ['Total Log Mutasi Stok', db.stok.length],
       ['Total Transaksi Kas', db.keuangan.length],
+      ['Total Pelanggan Registered', (db.customer || []).length],
+      ['Total Surat Pengiriman', (db.pengiriman || []).length],
       ['Total Akumulasi Pemasukan (Rp)', totalPemasukan],
       ['Total Akumulasi Pengeluaran (Rp)', totalPengeluaran],
       ['Saldo Bersih Kas (Rp)', saldoNet]
     ];
 
-    // 5. Batch update all 4 ranges
+    // 5. Batch update all ranges
     const batchUpdateRes = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${cleanId}/values:batchUpdate`,
       {
@@ -214,6 +245,8 @@ export async function syncDatabaseDirectToSheets(
             { range: "'Katalog Produk'!A1", values: rowsProduk },
             { range: "'Mutasi Stok'!A1", values: rowsStok },
             { range: "'Buku Kas Keuangan'!A1", values: rowsKeuangan },
+            { range: "'Daftar Customer'!A1", values: rowsCustomer },
+            { range: "'Data Pengiriman'!A1", values: rowsPengiriman },
             { range: "'Ringkasan Dashboard'!A1", values: rowsSummary }
           ]
         })

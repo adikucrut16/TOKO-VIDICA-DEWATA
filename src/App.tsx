@@ -26,7 +26,7 @@ import { ModalStok } from './components/ModalStok';
 import { ModalKeuangan } from './components/ModalKeuangan';
 import { SettingsModal } from './components/SettingsModal';
 import { LoginScreen } from './components/LoginScreen';
-import { initAuthListener, googleSignIn, googleSignOut, setAccessToken as updateStoredToken } from './lib/firebaseAuth';
+import { initAuthListener, googleSignIn, googleSignOut, setAccessToken as updateStoredToken, getAccessToken } from './lib/firebaseAuth';
 import { fetchCloudDatabase, saveCloudDatabase, subscribeCloudDatabase } from './lib/firestoreSync';
 import { 
   syncDatabaseDirectToSheets, 
@@ -168,7 +168,7 @@ export default function App() {
 
   // Google Sheets Synchronization (Direct API + Apps Script Web App Endpoint)
   const syncToSheets = async (targetDb = db) => {
-    let currentToken = accessToken;
+    let currentToken = accessToken || getAccessToken();
 
     if (!currentToken) {
       const wantLogin = window.confirm(
@@ -230,7 +230,7 @@ export default function App() {
     }
   };
 
-  // Save to LocalStorage & Optional Direct Auto Sync
+  // Save to LocalStorage, Cloud & Direct Auto Sync to Google Sheets
   const saveDatabase = (newDb: AppDatabase) => {
     setDb(newDb);
     try {
@@ -241,30 +241,32 @@ export default function App() {
       saveCloudDatabase(newDb);
     }
 
-    if (sheetsConfig.autoSync) {
-      const targetWebAppUrl = sheetsConfig.webAppUrl || DEFAULT_WEB_APP_URL;
-      if (targetWebAppUrl) {
-        syncToWebApp(newDb, targetWebAppUrl);
-      }
-      if (accessToken) {
-        syncDatabaseDirectToSheets(
-          newDb,
-          accessToken,
-          sheetsConfig.spreadsheetUrl || TARGET_SPREADSHEET_ID
-        ).then((res) => {
-          if (res.success) {
-            const nowStr = new Date().toISOString();
-            setSheetsConfig((prev) => {
-              const updated = { ...prev, lastSyncedAt: nowStr };
-              localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(updated));
-              return updated;
-            });
-          } else if (res.message?.includes('kadaluarsa')) {
-            updateStoredToken(null);
-            setAccessToken(null);
-          }
-        });
-      }
+    // Web App Endpoint Sync
+    const targetWebAppUrl = sheetsConfig.webAppUrl || DEFAULT_WEB_APP_URL;
+    if (targetWebAppUrl) {
+      syncToWebApp(newDb, targetWebAppUrl);
+    }
+
+    // Direct Google Sheets API Sync (if authorized)
+    const activeToken = accessToken || getAccessToken();
+    if (activeToken) {
+      syncDatabaseDirectToSheets(
+        newDb,
+        activeToken,
+        sheetsConfig.spreadsheetUrl || TARGET_SPREADSHEET_ID
+      ).then((res) => {
+        if (res.success) {
+          const nowStr = new Date().toISOString();
+          setSheetsConfig((prev) => {
+            const updated = { ...prev, lastSyncedAt: nowStr };
+            localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(updated));
+            return updated;
+          });
+        } else if (res.message?.includes('kadaluarsa')) {
+          updateStoredToken(null);
+          setAccessToken(null);
+        }
+      });
     }
   };
 
