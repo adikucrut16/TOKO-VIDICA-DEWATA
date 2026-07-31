@@ -111,16 +111,84 @@ export const StokView: React.FC<StokViewProps> = ({ db, onOpenModalStok, onDelet
         </div>
       </div>
 
-      {/* Mutations Table */}
+      {/* Mutations Section */}
       <div className="glass-panel overflow-hidden">
-        <div className="p-5 border-b border-slate-200/80 flex items-center justify-between bg-slate-50/50">
-          <h3 className="font-display font-bold text-slate-800 flex items-center gap-2">
-            <ArrowLeftRight className="w-5 h-5 text-indigo-600" /> Log Riwayat Mutasi Stok
+        <div className="p-4 sm:p-5 border-b border-slate-200/80 flex items-center justify-between bg-slate-50/50">
+          <h3 className="font-display font-bold text-slate-800 text-sm sm:text-base flex items-center gap-2">
+            <ArrowLeftRight className="w-5 h-5 text-indigo-600 shrink-0" /> Log Riwayat Mutasi Stok
           </h3>
           <span className="text-xs font-medium text-slate-500">Total {filteredLogs.length} Entri</span>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Mobile Cards (Visible on screens < md) */}
+        <div className="block md:hidden p-3 space-y-3">
+          {filteredLogs.length === 0 ? (
+            <div className="p-6 text-center text-slate-400 text-xs">
+              Belum ada riwayat mutasi stok.
+            </div>
+          ) : (
+            filteredLogs.map((s) => {
+              const prod = db.produk.find((p) => p.id === s.idProduk) || {
+                nama: '[Produk Dihapus]',
+                kategori: '-',
+                satuan: '-',
+                isiKarton: '-'
+              };
+              const isMasuk = s.tipe === 'MASUK';
+              const badgeClass = isMasuk
+                ? 'bg-sky-50 text-sky-700 border-sky-200/80'
+                : 'bg-amber-50 text-amber-700 border-amber-200/80';
+
+              return (
+                <div key={s.id} className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs space-y-2.5">
+                  <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2">
+                    <div>
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold border ${badgeClass}`}>
+                        {isMasuk ? <ArrowDownLeft className="w-3 h-3" /> : <ArrowUpRight className="w-3 h-3" />}
+                        {s.tipe}
+                      </span>
+                      <p className="text-[11px] text-slate-400 font-mono mt-1">{formatDate(s.date)}</p>
+                    </div>
+
+                    <div className="text-right">
+                      <span className="font-bold font-mono text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded text-xs">
+                        {isMasuk ? '+' : '-'}{s.jumlah} {prod.satuan || 'Pcs'}
+                      </span>
+                      {s.totalNilai ? (
+                        <p className="text-xs font-bold font-mono text-slate-900 mt-1">{formatRupiah(s.totalNilai)}</p>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="font-bold text-slate-800 text-sm">{prod.nama}</p>
+                    {s.keterangan && (
+                      <p className="text-xs text-slate-500 mt-0.5">{s.keterangan}</p>
+                    )}
+                  </div>
+
+                  {onDeleteStok && (
+                    <div className="flex justify-end pt-1 border-t border-slate-100">
+                      <button
+                        onClick={() => {
+                          if (window.confirm('Hapus catatan mutasi stok ini?')) {
+                            onDeleteStok(s.id);
+                          }
+                        }}
+                        className="text-xs text-rose-600 hover:bg-rose-50 px-2 py-1 rounded border border-rose-200 flex items-center gap-1 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" /> Hapus Catatan
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Desktop Table (Visible on screens >= md) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left whitespace-nowrap">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50 text-slate-500 text-xs font-bold uppercase tracking-wider">

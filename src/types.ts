@@ -28,7 +28,7 @@ export interface TransaksiKeuangan {
   nominal: number;
   keterangan: string;
   kategori?: string;
-  metodePembayaran?: 'CASH' | 'TRANSFER';
+  metodePembayaran?: 'CASH' | 'TRANSFER' | 'KREDIT';
   namaBank?: string;
 }
 
@@ -82,6 +82,8 @@ export interface Pengiriman {
   totalHarga?: number;
   catatan?: string;
   status?: 'PROSES' | 'TERKIRIM' | 'BATAL';
+  metodePembayaran?: 'CASH' | 'KREDIT';
+  autoRecordKeuangan?: boolean;
 }
 
 export interface AppDatabase {

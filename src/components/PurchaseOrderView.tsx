@@ -221,57 +221,155 @@ export const PurchaseOrderView: React.FC<PurchaseOrderViewProps> = ({
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs">
         <div>
-          <h2 className="text-xl font-bold text-slate-800 font-display flex items-center gap-2">
-            <ShoppingCart className="w-6 h-6 text-indigo-600" /> Purchase Order (PO) Supplier
+          <h2 className="text-lg sm:text-xl font-bold text-slate-800 font-display flex items-center gap-2">
+            <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600 shrink-0" /> 
+            <span>Purchase Order (PO) Supplier</span>
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            Pencatatan pemesanan barang ke supplier/distributor (Nama Supplier, List Barang, dan Qty) lengkap dengan cetak nota & simpan PDF resmi.
+            Pencatatan pemesanan barang ke supplier (Nama Supplier, List Barang, dan Qty) lengkap dengan cetak & PDF.
           </p>
         </div>
 
         <button
           onClick={openModal}
-          className="btn-neon px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer self-start sm:self-auto"
+          className="btn-neon w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer"
         >
           <Plus className="w-4 h-4" /> Buat Purchase Order (PO)
         </button>
       </div>
 
       {/* Search & Filter */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-        <div className="md:col-span-8 bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex items-center gap-3">
-          <Search className="w-5 h-5 text-slate-400" />
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4">
+        <div className="md:col-span-8 bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-2xs flex items-center gap-3">
+          <Search className="w-5 h-5 text-slate-400 shrink-0" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Cari No. PO, nama supplier, tanggal, atau nama barang..."
-            className="w-full text-sm bg-transparent outline-none text-slate-700 placeholder:text-slate-400 font-medium"
+            placeholder="Cari No. PO, supplier, tanggal, atau barang..."
+            className="w-full text-xs sm:text-sm bg-transparent outline-none text-slate-700 placeholder:text-slate-400 font-medium"
           />
           {search && (
-            <button onClick={() => setSearch('')} className="text-xs text-slate-400 hover:text-slate-600">
+            <button onClick={() => setSearch('')} className="text-xs text-slate-400 hover:text-slate-600 shrink-0">
               Clear
             </button>
           )}
         </div>
 
-        <div className="md:col-span-4 bg-gradient-to-r from-slate-900 to-indigo-950 text-white p-4 rounded-2xl border border-slate-800 flex items-center justify-between shadow-xs">
+        <div className="md:col-span-4 bg-gradient-to-r from-slate-900 to-indigo-950 text-white p-3.5 sm:p-4 rounded-2xl border border-slate-800 flex items-center justify-between shadow-xs">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-indigo-300">Total Purchase Order</p>
-            <p className="text-2xl font-bold font-mono mt-0.5">{poList.length} Pemesanan</p>
+            <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-indigo-300">Total Purchase Order</p>
+            <p className="text-xl sm:text-2xl font-bold font-mono mt-0.5">{poList.length} Pemesanan</p>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-300">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-300 shrink-0">
             <ShoppingCart className="w-5 h-5" />
           </div>
         </div>
       </div>
 
-      {/* PO Table */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+      {/* Mobile Card List View (Visible on screens < md) */}
+      <div className="block md:hidden space-y-3">
+        {filteredPO.length === 0 ? (
+          <div className="bg-white p-6 text-center rounded-2xl border border-slate-200 text-slate-400 text-xs">
+            <ShoppingCart className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+            Belum ada dokumen Purchase Order. Klik "Buat Purchase Order (PO)" untuk menambahkan.
+          </div>
+        ) : (
+          filteredPO.map((p) => (
+            <div key={p.id} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
+              <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2.5">
+                <div>
+                  <span className="font-bold text-xs font-mono text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 inline-block">
+                    {p.noPO || p.id}
+                  </span>
+                  <div className="flex items-center gap-1 text-xs font-mono text-slate-500 mt-1">
+                    <Calendar className="w-3.5 h-3.5 text-indigo-500" />
+                    {p.tanggal}
+                  </div>
+                </div>
+
+                <div>
+                  {p.status === 'DITERIMA' ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">
+                      <CheckCircle className="w-3.5 h-3.5" /> DITERIMA
+                    </span>
+                  ) : p.status === 'BATAL' ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200 text-[11px] font-bold">
+                      <X className="w-3.5 h-3.5" /> BATAL
+                    </span>
+                  ) : p.status === 'DIPESAN' ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 text-[11px] font-bold">
+                      <Clock className="w-3.5 h-3.5" /> DIPESAN
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-bold">
+                      <Clock className="w-3.5 h-3.5" /> DRAFT
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <div className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                  <Building2 className="w-4 h-4 text-indigo-600 shrink-0" />
+                  <span>{p.namaSupplier}</span>
+                </div>
+                {p.noTelpSupplier && <p className="text-xs text-slate-500 font-mono mt-0.5">Telp: {p.noTelpSupplier}</p>}
+                {p.alamatSupplier && <p className="text-xs text-slate-500 mt-0.5">{p.alamatSupplier}</p>}
+              </div>
+
+              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 space-y-1.5">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">List Barang Dipesan:</p>
+                {p.items.map((it, idx) => (
+                  <div key={idx} className="flex items-center justify-between text-xs text-slate-800">
+                    <span className="font-medium truncate pr-2">• {it.namaProduk}</span>
+                    <span className="font-bold font-mono text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded shrink-0">
+                      {it.quantity} {it.satuan}
+                    </span>
+                  </div>
+                ))}
+                {p.catatan && <p className="text-xs text-slate-500 italic mt-1 pt-1 border-t border-slate-200/60">Ket: {p.catatan}</p>}
+              </div>
+
+              <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
+                <button
+                  onClick={() => setActivePO(p)}
+                  className="flex-1 py-2 rounded-xl text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
+                >
+                  <Printer className="w-4 h-4" /> Nota PO
+                </button>
+
+                {p.status !== 'DITERIMA' && (
+                  <button
+                    onClick={() => onUpdateStatus(p.id, 'DITERIMA')}
+                    className="py-2 px-3 rounded-xl text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 flex items-center justify-center cursor-pointer active:scale-98"
+                  >
+                    Selesai
+                  </button>
+                )}
+
+                <button
+                  onClick={() => {
+                    if (window.confirm('Hapus dokumen Purchase Order ini?')) {
+                      onDeletePO(p.id);
+                    }
+                  }}
+                  className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 cursor-pointer"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Desktop PO Table (Visible on screens >= md) */}
+      <div className="hidden md:block bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -322,8 +420,8 @@ export const PurchaseOrderView: React.FC<PurchaseOrderViewProps> = ({
 
                     <td className="px-6 py-4 align-top">
                       <div className="font-bold text-slate-800 flex items-center gap-1.5">
-                        <Building2 className="w-4 h-4 text-slate-400" />
-                        {p.namaSupplier}
+                        <Building2 className="w-4 h-4 text-slate-400 shrink-0" />
+                        <span>{p.namaSupplier}</span>
                       </div>
                       {p.noTelpSupplier && <p className="text-xs text-slate-500 font-mono mt-0.5">Telp: {p.noTelpSupplier}</p>}
                       {p.alamatSupplier && <p className="text-xs text-slate-500 line-clamp-1 mt-0.5">{p.alamatSupplier}</p>}
@@ -389,17 +487,17 @@ export const PurchaseOrderView: React.FC<PurchaseOrderViewProps> = ({
       {/* Modal Input Purchase Order Baru */}
       {isModalOpen && (
         <div 
-          className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-50 flex items-center justify-center p-2 sm:p-4"
           onClick={() => setIsModalOpen(false)}
         >
           <div 
-            className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-3xl w-full overflow-hidden animate-in fade-in zoom-in duration-200 max-h-[90vh] flex flex-col relative z-10"
+            className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-2xl max-w-3xl w-full overflow-hidden animate-in fade-in zoom-in duration-200 max-h-[92vh] flex flex-col relative z-10"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-5 bg-gradient-to-r from-slate-900 to-indigo-950 text-white flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2.5">
-                <ShoppingCart className="w-5 h-5 text-indigo-400" />
-                <h3 className="font-bold text-base font-display">Buat Purchase Order (PO) Baru</h3>
+            <div className="p-4 sm:p-5 bg-gradient-to-r from-slate-900 to-indigo-950 text-white flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2">
+                <ShoppingCart className="w-5 h-5 text-indigo-400 shrink-0" />
+                <h3 className="font-bold text-sm sm:text-base font-display">Buat Purchase Order (PO) Baru</h3>
               </div>
               <button
                 type="button"
@@ -411,10 +509,10 @@ export const PurchaseOrderView: React.FC<PurchaseOrderViewProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleFormSubmit} className="p-6 overflow-y-auto space-y-5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <form onSubmit={handleFormSubmit} className="p-4 sm:p-6 overflow-y-auto space-y-4 sm:space-y-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">
+                  <label className="block text-xs font-bold text-slate-600 mb-1 uppercase tracking-wider">
                     Tanggal Order *
                   </label>
                   <input
@@ -422,12 +520,12 @@ export const PurchaseOrderView: React.FC<PurchaseOrderViewProps> = ({
                     required
                     value={tanggal}
                     onChange={(e) => setTanggal(e.target.value)}
-                    className="input-futuristic text-sm font-mono"
+                    className="input-futuristic text-xs sm:text-sm font-mono w-full"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">
+                  <label className="block text-xs font-bold text-slate-600 mb-1 uppercase tracking-wider">
                     Nama Supplier / Distributor *
                   </label>
                   <input
@@ -436,44 +534,44 @@ export const PurchaseOrderView: React.FC<PurchaseOrderViewProps> = ({
                     value={namaSupplier}
                     onChange={(e) => setNamaSupplier(e.target.value)}
                     placeholder="Contoh: PT. Sumber Makmur Utama"
-                    className="input-futuristic text-sm"
+                    className="input-futuristic text-xs sm:text-sm w-full"
                   />
                 </div>
               </div>
 
               {/* Supplier Details Box */}
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+              <div className="p-3.5 sm:p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
                 <p className="text-xs font-bold text-indigo-900 uppercase tracking-wider">
                   Detail Supplier & Kontak
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
                   <input
                     type="text"
                     value={noTelpSupplier}
                     onChange={(e) => setNoTelpSupplier(e.target.value)}
                     placeholder="No. Telepon / WhatsApp Supplier"
-                    className="input-futuristic text-sm bg-white font-mono"
+                    className="input-futuristic text-xs sm:text-sm bg-white font-mono w-full"
                   />
                   <input
                     type="text"
                     value={alamatSupplier}
                     onChange={(e) => setAlamatSupplier(e.target.value)}
                     placeholder="Alamat Supplier"
-                    className="input-futuristic text-sm bg-white"
+                    className="input-futuristic text-xs sm:text-sm bg-white w-full"
                   />
                 </div>
               </div>
 
               {/* Items Section */}
               <div className="space-y-3 pt-2 border-t border-slate-100">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
                     List Barang Yang Dipesan (PO) *
                   </label>
                   <button
                     type="button"
                     onClick={handleAddItemRow}
-                    className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
+                    className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer shrink-0"
                   >
                     <PlusCircle className="w-4 h-4" /> Tambah Barang
                   </button>
@@ -502,7 +600,7 @@ export const PurchaseOrderView: React.FC<PurchaseOrderViewProps> = ({
                             <select
                               value={item.idProduk}
                               onChange={(e) => handleItemChange(idx, 'idProduk', e.target.value)}
-                              className="input-futuristic text-xs bg-white cursor-pointer"
+                              className="input-futuristic text-xs bg-white cursor-pointer w-full"
                             >
                               {produkList.map((p) => (
                                 <option key={p.id} value={p.id} className="bg-white text-slate-800">
@@ -517,13 +615,13 @@ export const PurchaseOrderView: React.FC<PurchaseOrderViewProps> = ({
                               value={item.namaProduk}
                               onChange={(e) => handleItemChange(idx, 'namaProduk', e.target.value)}
                               placeholder="Nama Produk / Barang"
-                              className="input-futuristic text-xs bg-white"
+                              className="input-futuristic text-xs bg-white w-full"
                             />
                           )}
                         </div>
 
                         {/* Qty & Satuan */}
-                        <div className="sm:col-span-5 flex items-center gap-1.5">
+                        <div className="sm:col-span-5 flex items-center gap-2">
                           <input
                             type="number"
                             min={1}
@@ -531,14 +629,14 @@ export const PurchaseOrderView: React.FC<PurchaseOrderViewProps> = ({
                             value={item.quantity}
                             onChange={(e) => handleItemChange(idx, 'quantity', Number(e.target.value))}
                             placeholder="Qty"
-                            className="input-futuristic text-xs bg-white font-mono flex-1"
+                            className="input-futuristic text-xs bg-white font-mono w-1/2"
                           />
                           <input
                             type="text"
                             value={item.satuan}
                             onChange={(e) => handleItemChange(idx, 'satuan', e.target.value)}
                             placeholder="Satuan"
-                            className="input-futuristic text-xs bg-white flex-1"
+                            className="input-futuristic text-xs bg-white w-1/2"
                           />
                         </div>
                       </div>
@@ -548,7 +646,7 @@ export const PurchaseOrderView: React.FC<PurchaseOrderViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">
+                <label className="block text-xs font-bold text-slate-600 mb-1 uppercase tracking-wider">
                   Catatan / Syarat Ketentuan Pemesanan
                 </label>
                 <input
@@ -556,24 +654,24 @@ export const PurchaseOrderView: React.FC<PurchaseOrderViewProps> = ({
                   value={catatan}
                   onChange={(e) => setCatatan(e.target.value)}
                   placeholder="Contoh: Kirim sebelum tanggal 10 / Konfirmasi tanggal kirim"
-                  className="input-futuristic text-sm"
+                  className="input-futuristic text-xs sm:text-sm w-full"
                 />
               </div>
 
-              <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center gap-2">
+              <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-100 flex items-start sm:items-center gap-2">
                 <input
                   type="checkbox"
                   id="recordStock"
                   checked={recordStock}
                   onChange={(e) => setRecordStock(e.target.checked)}
-                  className="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                  className="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4 mt-0.5 sm:mt-0 cursor-pointer shrink-0"
                 />
                 <label htmlFor="recordStock" className="text-xs font-semibold text-indigo-950 cursor-pointer">
                   Otomatis catat penambahan stok barang masuk di log mutasi
                 </label>
               </div>
 
-              <div className="pt-3 flex justify-end gap-3 border-t border-slate-100 shrink-0">
+              <div className="pt-3 flex justify-end gap-2.5 sm:gap-3 border-t border-slate-100 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
@@ -583,7 +681,7 @@ export const PurchaseOrderView: React.FC<PurchaseOrderViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="btn-neon px-5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer"
+                  className="btn-neon px-5 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Receipt className="w-4 h-4" /> Simpan Purchase Order
                 </button>
@@ -596,35 +694,35 @@ export const PurchaseOrderView: React.FC<PurchaseOrderViewProps> = ({
       {/* Modal Preview Purchase Order & Cetak / Simpan PDF */}
       {activePO && (
         <div 
-          className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto"
+          className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto"
           onClick={() => setActivePO(null)}
         >
           <div 
-            className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-2xl w-full my-8 overflow-hidden animate-in fade-in zoom-in duration-200 relative z-10"
+            className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-2xl max-w-2xl w-full my-4 sm:my-8 overflow-hidden animate-in fade-in zoom-in duration-200 relative z-10 max-h-[95vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header Controls (Hidden during print) */}
-            <div className="p-4 bg-slate-900 text-white flex items-center justify-between no-print border-b border-slate-800">
+            {/* Header Controls */}
+            <div className="p-3.5 sm:p-4 bg-slate-900 text-white flex flex-wrap items-center justify-between gap-2 no-print border-b border-slate-800 shrink-0">
               <div className="flex items-center gap-2">
-                <ShoppingCart className="w-5 h-5 text-indigo-400" />
-                <h3 className="font-bold text-sm font-display">Pratinjau Purchase Order (PO)</h3>
+                <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-400 shrink-0" />
+                <h3 className="font-bold text-xs sm:text-sm font-display">Pratinjau Purchase Order (PO)</h3>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <button
                   type="button"
                   onClick={handlePrintPO}
-                  className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                  className="px-2.5 sm:px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
                 >
-                  <Printer className="w-4 h-4" /> Cetak (Print)
+                  <Printer className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Cetak</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={handleDownloadPdf}
-                  className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                  className="px-2.5 sm:px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
                 >
-                  <FileDown className="w-4 h-4" /> Simpan PDF
+                  <FileDown className="w-3.5 h-3.5" /> <span>PDF</span>
                 </button>
 
                 <button
@@ -639,111 +737,113 @@ export const PurchaseOrderView: React.FC<PurchaseOrderViewProps> = ({
             </div>
 
             {/* Printable Area Document */}
-            <div id="printable-po-modal" className="p-8 bg-white text-slate-900 space-y-6">
-              {/* Header Toko Vidica Dewata */}
-              <div className="border-b-2 border-slate-900 pb-4 flex justify-between items-start">
-                <div>
-                  <h1 className="text-xl font-black uppercase tracking-wider text-slate-900 font-display">
-                    TOKO VIDICA DEWATA
-                  </h1>
-                  <p className="text-xs text-slate-600 mt-0.5">Jl. Gunung Seraya No. 28, Denpasar, Bali</p>
-                  <p className="text-xs text-slate-500">Telp: 08125921720 / 081283364685</p>
-                </div>
-                <div className="text-right">
-                  <div className="inline-block bg-slate-900 text-white text-xs font-bold uppercase tracking-widest px-3 py-1 rounded">
-                    PURCHASE ORDER
+            <div className="p-4 sm:p-8 overflow-y-auto">
+              <div id="printable-po-modal" className="bg-white text-slate-900 space-y-4 sm:space-y-6">
+                {/* Header Toko Vidica Dewata */}
+                <div className="border-b-2 border-slate-900 pb-3 sm:pb-4 flex flex-col sm:flex-row justify-between items-start gap-3">
+                  <div>
+                    <h1 className="text-lg sm:text-xl font-black uppercase tracking-wider text-slate-900 font-display">
+                      TOKO VIDICA DEWATA
+                    </h1>
+                    <p className="text-xs text-slate-600 mt-0.5">Jl. Gunung Seraya No. 28, Denpasar, Bali</p>
+                    <p className="text-xs text-slate-500">Telp: 08125921720 / 081283364685</p>
                   </div>
-                  <p className="text-xs font-mono font-bold text-slate-800 mt-2">
-                    No. PO: <span className="text-indigo-900">{activePO.noPO || activePO.id}</span>
-                  </p>
-                  <p className="text-xs font-mono text-slate-600">Tanggal: {activePO.tanggal}</p>
+                  <div className="sm:text-right">
+                    <div className="inline-block bg-slate-900 text-white text-[10px] sm:text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded">
+                      PURCHASE ORDER
+                    </div>
+                    <p className="text-xs font-mono font-bold text-slate-800 mt-1.5">
+                      No. PO: <span className="text-indigo-900">{activePO.noPO || activePO.id}</span>
+                    </p>
+                    <p className="text-xs font-mono text-slate-600">Tanggal: {activePO.tanggal}</p>
+                  </div>
                 </div>
-              </div>
 
-              {/* Detail Supplier */}
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs">
-                <p className="font-bold uppercase tracking-wider text-slate-500 text-[10px] mb-1">
-                  KEPADA YTH. (SUPPLIER / DISTRIBUTOR)
-                </p>
-                <p className="font-bold text-sm text-slate-900">{activePO.namaSupplier}</p>
-                {activePO.noTelpSupplier && <p className="text-slate-700 mt-0.5"><span className="font-semibold">Telp:</span> {activePO.noTelpSupplier}</p>}
-                {activePO.alamatSupplier && <p className="text-slate-700 mt-0.5"><span className="font-semibold">Alamat:</span> {activePO.alamatSupplier}</p>}
-              </div>
+                {/* Detail Supplier */}
+                <div className="bg-slate-50 p-3 sm:p-4 rounded-xl border border-slate-200 text-xs">
+                  <p className="font-bold uppercase tracking-wider text-slate-500 text-[10px] mb-1">
+                    KEPADA YTH. (SUPPLIER / DISTRIBUTOR)
+                  </p>
+                  <p className="font-bold text-sm text-slate-900">{activePO.namaSupplier}</p>
+                  {activePO.noTelpSupplier && <p className="text-slate-700 mt-0.5"><span className="font-semibold">Telp:</span> {activePO.noTelpSupplier}</p>}
+                  {activePO.alamatSupplier && <p className="text-slate-700 mt-0.5"><span className="font-semibold">Alamat:</span> {activePO.alamatSupplier}</p>}
+                </div>
 
-              {/* Tabel Items PO (No price columns) */}
-              <div className="overflow-hidden border border-slate-300 rounded-lg">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="bg-slate-100 border-b border-slate-300 font-bold text-slate-800 uppercase tracking-wider text-[10px]">
-                      <th className="p-3 text-center border-r border-slate-300 w-12">No</th>
-                      <th className="p-3 border-r border-slate-300">Deskripsi Barang / Produk</th>
-                      <th className="p-3 text-center w-36">Qty & Satuan</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {activePO.items.map((it, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50">
-                        <td className="p-3 text-center font-mono border-r border-slate-200">{idx + 1}</td>
-                        <td className="p-3 font-semibold text-slate-800 border-r border-slate-200">{it.namaProduk}</td>
-                        <td className="p-3 text-center font-mono font-bold text-indigo-950">
-                          {it.quantity} {it.satuan}
-                        </td>
+                {/* Tabel Items PO */}
+                <div className="overflow-x-auto border border-slate-300 rounded-lg">
+                  <table className="w-full text-left text-xs border-collapse min-w-[320px]">
+                    <thead>
+                      <tr className="bg-slate-100 border-b border-slate-300 font-bold text-slate-800 uppercase tracking-wider text-[10px]">
+                        <th className="p-2.5 sm:p-3 text-center border-r border-slate-300 w-10">No</th>
+                        <th className="p-2.5 sm:p-3 border-r border-slate-300">Deskripsi Barang / Produk</th>
+                        <th className="p-2.5 sm:p-3 text-center w-28 sm:w-36">Qty & Satuan</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Catatan & Pengesahan */}
-              <div className="pt-2 grid grid-cols-2 gap-6 items-end">
-                <div>
-                  <p className="text-[10px] font-bold uppercase text-slate-500 mb-1">CATATAN PEMESANAN:</p>
-                  <p className="text-xs bg-slate-50 p-2.5 rounded border border-slate-200 text-slate-700 italic min-h-[48px]">
-                    {activePO.catatan || 'Mohon konfirmasi kesiapan barang dan tanggal estimasi pengiriman.'}
-                  </p>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {activePO.items.map((it, idx) => (
+                        <tr key={idx} className="hover:bg-slate-50">
+                          <td className="p-2.5 sm:p-3 text-center font-mono border-r border-slate-200">{idx + 1}</td>
+                          <td className="p-2.5 sm:p-3 font-semibold text-slate-800 border-r border-slate-200">{it.namaProduk}</td>
+                          <td className="p-2.5 sm:p-3 text-center font-mono font-bold text-indigo-950">
+                            {it.quantity} {it.satuan}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 text-center text-xs">
+                {/* Catatan & Pengesahan */}
+                <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 items-end">
                   <div>
-                    <p className="text-slate-500 text-[10px] uppercase font-bold mb-12">Hormat Kami</p>
-                    <p className="border-t border-slate-400 pt-1 font-semibold text-slate-800">
-                      ( Toko Vidica Dewata )
+                    <p className="text-[10px] font-bold uppercase text-slate-500 mb-1">CATATAN PEMESANAN:</p>
+                    <p className="text-xs bg-slate-50 p-2.5 rounded border border-slate-200 text-slate-700 italic min-h-[40px]">
+                      {activePO.catatan || 'Mohon konfirmasi kesiapan barang dan tanggal estimasi pengiriman.'}
                     </p>
                   </div>
-                  <div>
-                    <p className="text-slate-500 text-[10px] uppercase font-bold mb-12">Disetujui Supplier</p>
-                    <p className="border-t border-slate-400 pt-1 font-semibold text-slate-800">
-                      ( {activePO.namaSupplier} )
-                    </p>
+
+                  <div className="grid grid-cols-2 gap-3 text-center text-xs pt-2 sm:pt-0">
+                    <div>
+                      <p className="text-slate-500 text-[10px] uppercase font-bold mb-8 sm:mb-12">Hormat Kami</p>
+                      <p className="border-t border-slate-400 pt-1 font-semibold text-slate-800 text-[11px] sm:text-xs">
+                        ( Toko Vidica )
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500 text-[10px] uppercase font-bold mb-8 sm:mb-12">Disetujui Supplier</p>
+                      <p className="border-t border-slate-400 pt-1 font-semibold text-slate-800 text-[11px] sm:text-xs truncate">
+                        ( {activePO.namaSupplier} )
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Bottom Actions (Hidden during print) */}
-            <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between no-print">
+            {/* Bottom Actions */}
+            <div className="p-3.5 sm:p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between no-print shrink-0">
               <button
                 type="button"
                 onClick={() => setActivePO(null)}
-                className="px-5 py-2 rounded-xl text-xs font-bold text-slate-700 bg-slate-200 hover:bg-slate-300 transition-colors cursor-pointer shadow-2xs"
+                className="px-3.5 sm:px-5 py-2 rounded-xl text-xs font-bold text-slate-700 bg-slate-200 hover:bg-slate-300 transition-colors cursor-pointer"
               >
                 Tutup
               </button>
 
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={handlePrintPO}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-800 bg-white hover:bg-slate-100 border border-slate-300 flex items-center gap-2 cursor-pointer shadow-2xs transition-colors"
+                  className="px-3 py-2 rounded-xl text-xs font-bold text-slate-800 bg-white hover:bg-slate-100 border border-slate-300 flex items-center gap-1.5 cursor-pointer shadow-2xs transition-colors"
                 >
-                  <Printer className="w-4 h-4 text-indigo-600" /> Cetak (Print)
+                  <Printer className="w-4 h-4 text-indigo-600" /> <span className="hidden sm:inline">Cetak</span>
                 </button>
                 <button
                   type="button"
                   onClick={handleDownloadPdf}
-                  className="btn-neon px-5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer"
+                  className="btn-neon px-3.5 sm:px-5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
                 >
-                  <FileDown className="w-4 h-4" /> Simpan File PDF
+                  <FileDown className="w-4 h-4" /> Simpan PDF
                 </button>
               </div>
             </div>

@@ -204,12 +204,13 @@ export async function syncDatabaseDirectToSheets(
 
     // Data Pengiriman
     const rowsPengiriman = [
-      ['ID Pengiriman', 'No Nota', 'Tanggal', 'Nama Customer', 'Item & Qty', 'Total Nilai (Rp)', 'Status', 'Catatan'],
+      ['ID Pengiriman', 'No Nota', 'Tanggal', 'Nama Customer', 'Metode Bayar', 'Item & Qty', 'Total Nilai (Rp)', 'Status', 'Catatan'],
       ...(db.pengiriman || []).map((p) => [
         p.id,
         p.noNota || '-',
         formatDate(p.tanggal),
         p.namaCustomer,
+        p.metodePembayaran === 'KREDIT' ? 'KREDIT' : 'CASH',
         (p.items || []).map((i) => `${i.namaProduk} (${i.quantity} ${i.satuan})`).join('; '),
         p.totalHarga || (p.items || []).reduce((acc, i) => acc + (i.harga * i.quantity), 0),
         p.status || 'PROSES',

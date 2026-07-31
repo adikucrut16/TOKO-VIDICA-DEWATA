@@ -20,7 +20,9 @@ import {
   MapPin, 
   Receipt,
   Download,
-  FileDown
+  FileDown,
+  Banknote,
+  CreditCard
 } from 'lucide-react';
 
 interface PengirimanViewProps {
@@ -30,6 +32,7 @@ interface PengirimanViewProps {
   onSavePengiriman: (pengiriman: Omit<Pengiriman, 'id'> & { id?: string }, deductStock?: boolean) => Pengiriman;
   onDeletePengiriman: (id: string) => void;
   onUpdateStatus: (id: string, newStatus: 'PROSES' | 'TERKIRIM' | 'BATAL') => void;
+  onUpdateMetodePembayaran?: (id: string, newMetode: 'CASH' | 'KREDIT') => void;
 }
 
 const formatRupiah = (num: number) => {
@@ -42,7 +45,8 @@ export const PengirimanView: React.FC<PengirimanViewProps> = ({
   produkList,
   onSavePengiriman,
   onDeletePengiriman,
-  onUpdateStatus
+  onUpdateStatus,
+  onUpdateMetodePembayaran
 }) => {
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -56,6 +60,8 @@ export const PengirimanView: React.FC<PengirimanViewProps> = ({
   const [noTelp, setNoTelp] = useState('');
   const [pic, setPic] = useState('');
   const [catatan, setCatatan] = useState('');
+  const [metodePembayaran, setMetodePembayaran] = useState<'CASH' | 'KREDIT'>('CASH');
+  const [autoRecordKeuangan, setAutoRecordKeuangan] = useState(true);
   const [deductStock, setDeductStock] = useState(true);
 
   // Items list in form
@@ -85,6 +91,8 @@ export const PengirimanView: React.FC<PengirimanViewProps> = ({
       setPic('');
     }
     setCatatan('');
+    setMetodePembayaran('CASH');
+    setAutoRecordKeuangan(true);
     setDeductStock(true);
 
     if (produkList.length > 0) {
@@ -204,7 +212,9 @@ export const PengirimanView: React.FC<PengirimanViewProps> = ({
         items: validItems,
         totalHarga: computedTotal,
         catatan,
-        status: 'PROSES'
+        status: 'PROSES',
+        metodePembayaran,
+        autoRecordKeuangan
       },
       deductStock
     );
@@ -326,13 +336,150 @@ export const PengirimanView: React.FC<PengirimanViewProps> = ({
         </div>
       </div>
 
-      {/* Pengiriman List Table */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+      {/* Mobile Cards View (Visible on screens < md) */}
+      <div className="block md:hidden space-y-3">
+        {filteredPengiriman.length === 0 ? (
+          <div className="bg-white p-6 text-center rounded-2xl border border-slate-200 text-slate-400 text-xs">
+            <Truck className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+            Belum ada riwayat pengiriman. Klik "Buat Surat Pengiriman" untuk mencatat.
+          </div>
+        ) : (
+          filteredPengiriman.map((p) => {
+            const calculatedTotal = p.totalHarga ?? p.items.reduce((acc, it) => acc + (it.quantity * (it.harga || 0)), 0);
+
+            return (
+              <div key={p.id} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
+                <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2.5">
+                  <div>
+                    <span className="font-bold text-xs font-mono text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 inline-block">
+                      {p.noNota || p.id}
+                    </span>
+                    <div className="flex items-center gap-1 text-xs font-mono text-slate-500 mt-1">
+                      <Calendar className="w-3.5 h-3.5 text-indigo-500" />
+                      {p.tanggal}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-end gap-1">
+                    {p.status === 'TERKIRIM' ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">
+                        <CheckCircle className="w-3.5 h-3.5" /> TERKIRIM
+                      </span>
+                    ) : p.status === 'BATAL' ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 text-[11px] font-bold">
+                        <X className="w-3.5 h-3.5" /> BATAL
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 text-[11px] font-bold">
+                        <Clock className="w-3.5 h-3.5" /> PROSES
+                      </span>
+                    )}
+
+                    {onUpdateMetodePembayaran ? (
+                      <select
+                        value={p.metodePembayaran || 'CASH'}
+                        onChange={(e) => onUpdateMetodePembayaran(p.id, e.target.value as 'CASH' | 'KREDIT')}
+                        className={`text-[10px] font-bold rounded-lg px-2 py-0.5 border cursor-pointer ${
+                          p.metodePembayaran === 'KREDIT'
+                            ? 'bg-amber-50 text-amber-800 border-amber-300'
+                            : 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                        }`}
+                      >
+                        <option value="CASH">💵 CASH (Tunai)</option>
+                        <option value="KREDIT">💳 KREDIT (Piutang)</option>
+                      </select>
+                    ) : (
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border ${
+                        p.metodePembayaran === 'KREDIT'
+                          ? 'bg-amber-50 text-amber-700 border-amber-200'
+                          : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      }`}>
+                        {p.metodePembayaran === 'KREDIT' ? <CreditCard className="w-3 h-3" /> : <Banknote className="w-3 h-3" />}
+                        {p.metodePembayaran === 'KREDIT' ? 'KREDIT' : 'CASH'}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                    <User className="w-4 h-4 text-indigo-600 shrink-0" />
+                    <span>{p.namaCustomer}</span>
+                  </div>
+                  {p.pic && <p className="text-xs text-indigo-600 font-medium mt-0.5">PIC: {p.pic}</p>}
+                  {p.noTelp && <p className="text-xs text-slate-500 font-mono mt-0.5">Telp: {p.noTelp}</p>}
+                  {p.alamat && <p className="text-xs text-slate-500 mt-0.5">{p.alamat}</p>}
+                </div>
+
+                <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 space-y-1.5">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">List Barang:</p>
+                  {p.items.map((it, idx) => (
+                    <div key={idx} className="flex items-center justify-between text-xs text-slate-800">
+                      <span className="font-medium truncate pr-2">• {it.namaProduk}</span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="font-bold font-mono text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded text-[11px]">
+                          {it.quantity} {it.satuan}
+                        </span>
+                        {it.harga ? (
+                          <span className="text-[10px] font-mono text-slate-500">
+                            @ {formatRupiah(it.harga)}
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))}
+                  {p.catatan && <p className="text-xs text-slate-500 italic mt-1 pt-1 border-t border-slate-200/60">Ket: {p.catatan}</p>}
+                </div>
+
+                <div className="flex items-center justify-between pt-1 border-t border-slate-100">
+                  <span className="text-xs text-slate-500">Total Nilai:</span>
+                  <span className="font-bold font-mono text-slate-900 text-sm">
+                    {formatRupiah(calculatedTotal)}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
+                  <button
+                    onClick={() => setActiveNota(p)}
+                    className="flex-1 py-2 rounded-xl text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
+                  >
+                    <Printer className="w-4 h-4" /> Nota
+                  </button>
+
+                  {p.status !== 'TERKIRIM' && (
+                    <button
+                      onClick={() => onUpdateStatus(p.id, 'TERKIRIM')}
+                      className="py-2 px-3 rounded-xl text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 flex items-center justify-center cursor-pointer active:scale-98"
+                    >
+                      Selesai
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => {
+                      if (window.confirm('Hapus riwayat pengiriman ini?')) {
+                        onDeletePengiriman(p.id);
+                      }
+                    }}
+                    className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 cursor-pointer"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Desktop Pengiriman List Table (Visible on screens >= md) */}
+      <div className="hidden md:block bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
                 <th className="px-6 py-4">No. Nota & Status</th>
+                <th className="px-6 py-4">Metode Bayar</th>
                 <th className="px-6 py-4">Nama Customer & PIC</th>
                 <th className="px-6 py-4">List Barang (Qty, Satuan & Harga)</th>
                 <th className="px-6 py-4 text-right">Total Nilai</th>
@@ -342,7 +489,7 @@ export const PengirimanView: React.FC<PengirimanViewProps> = ({
             <tbody className="divide-y divide-slate-100 text-sm">
               {filteredPengiriman.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
                     <Truck className="w-10 h-10 mx-auto text-slate-300 mb-2" />
                     Belum ada riwayat pengiriman. Klik "Buat Surat Pengiriman" untuk mencatat.
                   </td>
@@ -370,16 +517,42 @@ export const PengirimanView: React.FC<PengirimanViewProps> = ({
                             <X className="w-3 h-3" /> BATAL
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] font-bold">
                             <Clock className="w-3 h-3" /> PROSES
                           </span>
                         )}
                       </td>
 
                       <td className="px-6 py-4 align-top">
+                        {onUpdateMetodePembayaran ? (
+                          <select
+                            value={p.metodePembayaran || 'CASH'}
+                            onChange={(e) => onUpdateMetodePembayaran(p.id, e.target.value as 'CASH' | 'KREDIT')}
+                            className={`text-xs font-bold rounded-lg px-2.5 py-1 border cursor-pointer ${
+                              p.metodePembayaran === 'KREDIT'
+                                ? 'bg-amber-50 text-amber-800 border-amber-300'
+                                : 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                            }`}
+                          >
+                            <option value="CASH">💵 CASH (Tunai)</option>
+                            <option value="KREDIT">💳 KREDIT (Piutang)</option>
+                          </select>
+                        ) : (
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold border ${
+                            p.metodePembayaran === 'KREDIT'
+                              ? 'bg-amber-50 text-amber-700 border-amber-200'
+                              : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          }`}>
+                            {p.metodePembayaran === 'KREDIT' ? <CreditCard className="w-3.5 h-3.5" /> : <Banknote className="w-3.5 h-3.5" />}
+                            {p.metodePembayaran === 'KREDIT' ? 'KREDIT' : 'CASH'}
+                          </span>
+                        )}
+                      </td>
+
+                      <td className="px-6 py-4 align-top">
                         <div className="font-bold text-slate-800 flex items-center gap-1.5">
-                          <User className="w-4 h-4 text-slate-400" />
-                          {p.namaCustomer}
+                          <User className="w-4 h-4 text-slate-400 shrink-0" />
+                          <span>{p.namaCustomer}</span>
                         </div>
                         {p.pic && <p className="text-xs text-indigo-600 font-medium mt-0.5">PIC: {p.pic}</p>}
                         {p.noTelp && <p className="text-xs text-slate-500 font-mono mt-0.5">Telp: {p.noTelp}</p>}
@@ -683,6 +856,42 @@ export const PengirimanView: React.FC<PengirimanViewProps> = ({
                 </div>
               </div>
 
+              {/* Metode Pembayaran (Cash / Kredit) */}
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2.5">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  Metode Pembayaran *
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setMetodePembayaran('CASH')}
+                    className={`p-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                      metodePembayaran === 'CASH'
+                        ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs'
+                        : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                    }`}
+                  >
+                    <Banknote className="w-4 h-4" /> CASH (Tunai)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMetodePembayaran('KREDIT')}
+                    className={`p-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                      metodePembayaran === 'KREDIT'
+                        ? 'bg-amber-600 text-white border-amber-700 shadow-xs'
+                        : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                    }`}
+                  >
+                    <CreditCard className="w-4 h-4" /> KREDIT (Piutang)
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-500 italic">
+                  {metodePembayaran === 'CASH'
+                    ? '• Pembayaran tunai: Otomatis dicatat sebagai Pemasukan Kas di Kas & Keuangan.'
+                    : '• Pembayaran kredit/tempo: Otomatis dicatat sebagai Piutang di Kas & Keuangan.'}
+                </p>
+              </div>
+
               <div>
                 <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">
                   Catatan / Keterangan Pengiriman
@@ -691,22 +900,37 @@ export const PengirimanView: React.FC<PengirimanViewProps> = ({
                   type="text"
                   value={catatan}
                   onChange={(e) => setCatatan(e.target.value)}
-                  placeholder="Contoh: Titip di kasir / Kirim sore hari"
+                  placeholder="Contoh: Titip di kasir / Kirim sore hari / Jatuh tempo 30 hari"
                   className="input-futuristic text-sm"
                 />
               </div>
 
-              <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="deductStock"
-                  checked={deductStock}
-                  onChange={(e) => setDeductStock(e.target.checked)}
-                  className="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
-                />
-                <label htmlFor="deductStock" className="text-xs font-semibold text-indigo-950 cursor-pointer">
-                  Otomatis potong stok barang keluar di sistem mutasi stok
-                </label>
+              <div className="space-y-2 pt-1">
+                <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="deductStock"
+                    checked={deductStock}
+                    onChange={(e) => setDeductStock(e.target.checked)}
+                    className="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer shrink-0"
+                  />
+                  <label htmlFor="deductStock" className="text-xs font-semibold text-indigo-950 cursor-pointer">
+                    Otomatis potong stok barang keluar di sistem mutasi stok
+                  </label>
+                </div>
+
+                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="autoRecordKeuangan"
+                    checked={autoRecordKeuangan}
+                    onChange={(e) => setAutoRecordKeuangan(e.target.checked)}
+                    className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer shrink-0"
+                  />
+                  <label htmlFor="autoRecordKeuangan" className="text-xs font-semibold text-emerald-950 cursor-pointer">
+                    Hubungkan & catat transaksi ke Kas & Keuangan ({metodePembayaran === 'CASH' ? 'Pemasukan Kas' : 'Piutang'})
+                  </label>
+                </div>
               </div>
 
               <div className="pt-3 flex justify-end gap-3 border-t border-slate-100 shrink-0">
@@ -793,6 +1017,11 @@ export const PengirimanView: React.FC<PengirimanViewProps> = ({
                     No: <span className="text-indigo-900">{activeNota.noNota || activeNota.id}</span>
                   </p>
                   <p className="text-xs font-mono text-slate-600">Tanggal: {activeNota.tanggal}</p>
+                  <p className="text-xs font-mono font-bold text-slate-900 mt-1">
+                    Pembayaran: <span className={activeNota.metodePembayaran === 'KREDIT' ? 'text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200' : 'text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200'}>
+                      {activeNota.metodePembayaran === 'KREDIT' ? 'KREDIT (PIUTANG)' : 'CASH (TUNAI)'}
+                    </span>
+                  </p>
                 </div>
               </div>
 

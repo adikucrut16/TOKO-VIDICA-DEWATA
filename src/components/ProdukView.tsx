@@ -105,8 +105,89 @@ export const ProdukView: React.FC<ProdukViewProps> = ({
         </div>
       </div>
 
-      {/* Catalog Table */}
-      <div className="glass-panel overflow-hidden">
+      {/* Mobile Catalog Cards (Visible on screens < md) */}
+      <div className="block md:hidden space-y-3">
+        {filteredProducts.length === 0 ? (
+          <div className="bg-white p-6 text-center rounded-2xl border border-slate-200 text-slate-400 text-xs">
+            <Layers className="w-8 h-8 mx-auto text-slate-300 mb-2 animate-pulse" />
+            Tidak ada produk yang cocok dengan pencarian.
+          </div>
+        ) : (
+          filteredProducts.map((p) => {
+            const sisa = getSisaStok(p.id);
+            const minStok = p.minStok ?? 5;
+
+            let stokBadgeColor = 'bg-emerald-50 text-emerald-700 border-emerald-200/80';
+            if (sisa <= 0) {
+              stokBadgeColor = 'bg-rose-50 text-rose-700 border-rose-200/80 animate-pulse';
+            } else if (sisa <= minStok) {
+              stokBadgeColor = 'bg-amber-50 text-amber-700 border-amber-200/80';
+            }
+
+            return (
+              <div key={p.id} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
+                <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2">
+                  <div>
+                    <span className="font-mono text-xs text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 inline-block mb-1">
+                      {p.sku}
+                    </span>
+                    <h4 className="font-bold text-slate-900 text-sm">{p.nama}</h4>
+                  </div>
+
+                  <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-bold border shrink-0 ${stokBadgeColor}`}>
+                    {sisa} Unit
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Kategori</span>
+                    <span className="font-semibold text-slate-700">{p.kategori || 'Umum'}</span>
+                  </div>
+
+                  <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Satuan / Isi</span>
+                    <span className="font-semibold text-slate-700">{p.satuan || 'Pcs'} (Isi: {p.isiKarton || '1'})</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-1 border-t border-slate-100">
+                  <div>
+                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Harga Dasar</span>
+                    <span className="font-bold font-mono text-slate-900 text-sm">{formatRupiah(p.harga)}</span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => onQuickStok(p, 'MASUK')}
+                      className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition-colors cursor-pointer active:scale-98"
+                    >
+                      + Stok
+                    </button>
+                    <button
+                      onClick={() => onOpenEditModal(p)}
+                      className="p-1.5 text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition-colors cursor-pointer"
+                      title="Edit Produk"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => onDeleteProduk(p.id)}
+                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 rounded-xl transition-colors cursor-pointer"
+                      title="Hapus Produk"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Desktop Catalog Table (Visible on screens >= md) */}
+      <div className="hidden md:block glass-panel overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left whitespace-nowrap">
             <thead>

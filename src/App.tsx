@@ -594,14 +594,63 @@ export default function App() {
       });
     }
 
+    let updatedKeuangan = [...db.keuangan];
+    if (pengirimanData.autoRecordKeuangan !== false) {
+      const isKredit = pengirimanData.metodePembayaran === 'KREDIT';
+      const totalNilai = pengirimanData.totalHarga ?? pengirimanData.items.reduce((acc, it) => acc + (it.quantity * (it.harga || 0)), 0);
+
+      updatedKeuangan.unshift({
+        id: `KEU-KRM-${Date.now()}`,
+        date: new Date().toISOString(),
+        tipe: 'MASUK',
+        nominal: totalNilai,
+        kategori: isKredit ? 'Piutang' : 'Penjualan',
+        metodePembayaran: isKredit ? 'KREDIT' : 'CASH',
+        keterangan: `[PENGIRIMAN - ${isKredit ? 'KREDIT/PIUTANG' : 'CASH'}] Kepada ${pengirimanData.namaCustomer} (${pengirimanData.noNota || 'Nota Baru'})`
+      });
+    }
+
     saveDatabase({
       ...db,
       pengiriman: [newPengiriman, ...currentList],
-      stok: updatedStok
+      stok: updatedStok,
+      keuangan: updatedKeuangan
     });
 
-    showToast(`Nota pengiriman untuk "${pengirimanData.namaCustomer}" berhasil dibuat.`);
+    const isKreditMsg = pengirimanData.metodePembayaran === 'KREDIT' ? ' (Metode Kredit / Piutang)' : ' (Metode Cash / Tunai)';
+    showToast(`Nota pengiriman untuk "${pengirimanData.namaCustomer}" berhasil dibuat${isKreditMsg}.`);
     return newPengiriman;
+  };
+
+  const handleUpdateMetodePembayaranPengiriman = (id: string, newMetode: 'CASH' | 'KREDIT') => {
+    const currentList = db.pengiriman || [];
+    const target = currentList.find((p) => p.id === id);
+    if (!target) return;
+
+    const updatedList = currentList.map((p) =>
+      p.id === id ? { ...p, metodePembayaran: newMetode } : p
+    );
+
+    const isKredit = newMetode === 'KREDIT';
+    const totalNilai = target.totalHarga ?? target.items.reduce((acc, it) => acc + (it.quantity * (it.harga || 0)), 0);
+
+    const updatedKeuangan = [{
+      id: `KEU-UPDATE-${Date.now()}`,
+      date: new Date().toISOString(),
+      tipe: 'MASUK' as const,
+      nominal: totalNilai,
+      kategori: isKredit ? 'Piutang' : 'Penjualan',
+      metodePembayaran: newMetode,
+      keterangan: `[UPDATE METODE - ${isKredit ? 'KREDIT/PIUTANG' : 'CASH'}] Nota ${target.noNota || target.id} - Customer ${target.namaCustomer}`
+    }, ...db.keuangan];
+
+    saveDatabase({
+      ...db,
+      pengiriman: updatedList,
+      keuangan: updatedKeuangan
+    });
+
+    showToast(`Metode pembayaran nota ${target.noNota || target.id} diubah ke ${newMetode === 'KREDIT' ? 'KREDIT (Piutang)' : 'CASH (Tunai)'} & dihubungkan ke Kas.`);
   };
 
   const handleDeletePengiriman = (id: string) => {
@@ -820,6 +869,7 @@ export default function App() {
               onSavePengiriman={handleSavePengiriman}
               onDeletePengiriman={handleDeletePengiriman}
               onUpdateStatus={handleUpdateStatusPengiriman}
+              onUpdateMetodePembayaran={handleUpdateMetodePembayaranPengiriman}
             />
           )}
 
