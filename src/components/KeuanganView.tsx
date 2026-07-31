@@ -130,13 +130,13 @@ export const KeuanganView: React.FC<KeuanganViewProps> = ({ db, onOpenModalKeuan
     const notaKey = (p.noNota || p.id).toLowerCase();
     const customerKey = (p.namaCustomer || '').toLowerCase();
 
-    // Check payments matching this nota or customer
+    // Check payments matching this nota or customer specifically
     const totalPaid = db.keuangan
-      .filter((k) => k.tipe === 'MASUK' && (
-        (k.kategori === 'Pelunasan Piutang' || k.kategori === 'Piutang') ||
-        k.keterangan.toLowerCase().includes(notaKey) ||
-        (customerKey && k.keterangan.toLowerCase().includes(customerKey))
-      ))
+      .filter((k) => k.tipe === 'MASUK' && 
+        (k.kategori === 'Pelunasan Piutang' || k.kategori === 'Piutang') &&
+        ((notaKey && k.keterangan.toLowerCase().includes(notaKey)) ||
+         (customerKey && k.keterangan.toLowerCase().includes(customerKey)))
+      )
       .reduce((acc, k) => acc + k.nominal, 0);
 
     const sisaPiutang = Math.max(0, totalHarga - totalPaid);
@@ -168,12 +168,11 @@ export const KeuanganView: React.FC<KeuanganViewProps> = ({ db, onOpenModalKeuan
     const supplierKey = (po.namaSupplier || '').toLowerCase();
 
     const totalPaid = db.keuangan
-      .filter((k) => k.tipe === 'KELUAR' && (
-        (k.kategori === 'Pelunasan Hutang' || k.kategori === 'Pembelian Stok') && (
-          k.keterangan.toLowerCase().includes(poKey) ||
-          (supplierKey && k.keterangan.toLowerCase().includes(supplierKey))
-        )
-      ))
+      .filter((k) => k.tipe === 'KELUAR' && 
+        (k.kategori === 'Pelunasan Hutang' || k.kategori === 'Pembelian Stok') &&
+        ((poKey && k.keterangan.toLowerCase().includes(poKey)) ||
+         (supplierKey && k.keterangan.toLowerCase().includes(supplierKey)))
+      )
       .reduce((acc, k) => acc + k.nominal, 0);
 
     const sisaHutang = Math.max(0, totalHarga - totalPaid);
@@ -773,10 +772,12 @@ export const KeuanganView: React.FC<KeuanganViewProps> = ({ db, onOpenModalKeuan
                               })}
                               className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-2xs transition-all flex items-center justify-center gap-1.5 mx-auto cursor-pointer"
                             >
-                              <Banknote className="w-3.5 h-3.5" /> Bayar / Terima Pelunasan
+                              <Banknote className="w-3.5 h-3.5" /> 💳 Terima Pelunasan (Cash/Transfer)
                             </button>
                           ) : (
-                            <span className="text-xs text-slate-400 italic">Sudah Lunas</span>
+                            <span className="text-xs text-slate-400 italic flex items-center justify-center gap-1">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> Sudah Lunas
+                            </span>
                           )}
                         </td>
                       </tr>
