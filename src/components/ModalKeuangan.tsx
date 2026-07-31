@@ -14,6 +14,13 @@ interface ModalKeuanganProps {
     namaBank?: string;
   }) => void;
   tipe: TipeMutasi;
+  initialData?: {
+    nominal?: number;
+    keterangan?: string;
+    kategori?: string;
+    metodePembayaran?: 'CASH' | 'TRANSFER';
+    namaBank?: string;
+  };
 }
 
 const BANK_OPTIONS = ['BCA', 'MANDIRI', 'BNI', 'BRI', 'MANTAP', 'BPD', 'BSI', 'BANK_LAIN'];
@@ -22,7 +29,8 @@ export const ModalKeuangan: React.FC<ModalKeuanganProps> = ({
   isOpen,
   onClose,
   onSave,
-  tipe
+  tipe,
+  initialData
 }) => {
   const [nominal, setNominal] = useState<number | ''>('');
   const [keterangan, setKeterangan] = useState('');
@@ -32,13 +40,31 @@ export const ModalKeuangan: React.FC<ModalKeuanganProps> = ({
   const [customBank, setCustomBank] = useState('');
 
   useEffect(() => {
-    setNominal('');
-    setKeterangan('');
-    setKategori(tipe === 'MASUK' ? 'Penjualan' : 'Operasional');
-    setMetodePembayaran('CASH');
-    setSelectedBank('BCA');
-    setCustomBank('');
-  }, [isOpen, tipe]);
+    if (initialData) {
+      setNominal(initialData.nominal || '');
+      setKeterangan(initialData.keterangan || '');
+      setKategori(initialData.kategori || (tipe === 'MASUK' ? 'Penjualan' : 'Operasional'));
+      setMetodePembayaran(initialData.metodePembayaran || 'CASH');
+      if (initialData.namaBank) {
+        if (BANK_OPTIONS.includes(initialData.namaBank.toUpperCase())) {
+          setSelectedBank(initialData.namaBank.toUpperCase());
+        } else {
+          setSelectedBank('BANK_LAIN');
+          setCustomBank(initialData.namaBank);
+        }
+      } else {
+        setSelectedBank('BCA');
+        setCustomBank('');
+      }
+    } else {
+      setNominal('');
+      setKeterangan('');
+      setKategori(tipe === 'MASUK' ? 'Penjualan' : 'Operasional');
+      setMetodePembayaran('CASH');
+      setSelectedBank('BCA');
+      setCustomBank('');
+    }
+  }, [isOpen, tipe, initialData]);
 
   if (!isOpen) return null;
 
@@ -194,13 +220,14 @@ export const ModalKeuangan: React.FC<ModalKeuanganProps> = ({
               {isMasuk ? (
                 <>
                   <option value="Penjualan" className="bg-white text-slate-800">Penjualan Harian</option>
+                  <option value="Pelunasan Piutang" className="bg-white text-slate-800">Pelunasan Piutang Customer</option>
                   <option value="Modal" className="bg-white text-slate-800">Tambahan Modal</option>
-                  <option value="Piutang" className="bg-white text-slate-800">Pembayaran Piutang</option>
                   <option value="Lainnya" className="bg-white text-slate-800">Lain-lain</option>
                 </>
               ) : (
                 <>
                   <option value="Operasional" className="bg-white text-slate-800">Biaya Operasional (Listrik/Air/Internet)</option>
+                  <option value="Pelunasan Hutang" className="bg-white text-slate-800">Pelunasan Hutang Supplier / PO</option>
                   <option value="Pembelian Stok" className="bg-white text-slate-800">Pembelian Stok Supplier</option>
                   <option value="Gaji" className="bg-white text-slate-800">Gaji / Honor Karyawan</option>
                   <option value="Sewa" className="bg-white text-slate-800">Sewa Tempat</option>

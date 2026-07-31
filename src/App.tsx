@@ -98,6 +98,13 @@ export default function App() {
 
   const [isModalKeuanganOpen, setIsModalKeuanganOpen] = useState(false);
   const [keuanganModalTipe, setKeuanganModalTipe] = useState<TipeMutasi>('MASUK');
+  const [keuanganModalInitialData, setKeuanganModalInitialData] = useState<{
+    nominal?: number;
+    keterangan?: string;
+    kategori?: string;
+    metodePembayaran?: 'CASH' | 'TRANSFER';
+    namaBank?: string;
+  } | undefined>(undefined);
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
@@ -845,8 +852,9 @@ export default function App() {
           {activeTab === 'keuangan' && (
             <KeuanganView
               db={db}
-              onOpenModalKeuangan={(tipe) => {
+              onOpenModalKeuangan={(tipe, initialData) => {
                 setKeuanganModalTipe(tipe);
+                setKeuanganModalInitialData(initialData);
                 setIsModalKeuanganOpen(true);
               }}
               onDeleteKeuangan={handleDeleteKeuangan}
@@ -921,9 +929,13 @@ export default function App() {
 
       <ModalKeuangan
         isOpen={isModalKeuanganOpen}
-        onClose={() => setIsModalKeuanganOpen(false)}
+        onClose={() => {
+          setIsModalKeuanganOpen(false);
+          setKeuanganModalInitialData(undefined);
+        }}
         onSave={handleSaveKeuangan}
         tipe={keuanganModalTipe}
+        initialData={keuanganModalInitialData}
       />
 
       <SettingsModal
